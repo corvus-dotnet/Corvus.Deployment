@@ -52,7 +52,7 @@ function Read-DeploymentConfig
     $environmentConfigFile = Join-Path $ConfigPath "$($EnvironmentConfigName)$($ConfigFileExtension)" -Resolve
 
     # execute the config repo files to evaluate the configuration and merge the results
-    $resolvedConfig = (_DotSourceScriptFile -Path $sharedConfigFile) | `
+    $deploymentConfig = (_DotSourceScriptFile -Path $sharedConfigFile) | `
                             Merge-Hashtables (_DotSourceScriptFile -Path $environmentConfigFile)
     Write-Verbose ($deploymentConfig | Format-Table | Out-String)
 
@@ -75,5 +75,5 @@ function Read-DeploymentConfig
         }
     }
 
-    $resolvedConfig
+    $deploymentConfig
 }
