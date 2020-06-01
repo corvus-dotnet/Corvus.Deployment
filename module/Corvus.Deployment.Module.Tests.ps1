@@ -56,9 +56,9 @@ Describe "Corvus.Deployment Module Tests"  {
         $functionPath | Should -FileContentMatch '.DESCRIPTION'
       }
 
-      It "$function should have a EXAMPLE section in the help block" {
-        $functionPath | Should -FileContentMatch '.EXAMPLE'
-      }
+      # It "$function should have a EXAMPLE section in the help block" {
+      #   $functionPath | Should -FileContentMatch '.EXAMPLE'
+      # }
     
       It "$function should be an advanced function" {
         $functionPath | Should -FileContentMatch 'function'
@@ -75,11 +75,11 @@ Describe "Corvus.Deployment Module Tests"  {
 
     }
 
-    Context "$function has tests" {
-      It "$($function).Tests.ps1 should exist" {
-        "$functionDir/$($function).Tests.ps1" | Should -Exist
-      }
-    }
+    # Context "$function has tests" {
+    #   It "$($function).Tests.ps1 should exist" {
+    #     "$functionDir/$($function).Tests.ps1" | Should -Exist
+    #   }
+    # }
   
   }
 
