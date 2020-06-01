@@ -63,6 +63,10 @@ The file system path to any additional linked ARM templates used by the main ARM
 
 The path should be to a directory that contains another directory named 'templates', within which these templates should reside.
 
+.PARAMETER ArmArtifactStagingResourceGroupName
+The resource group where the Azure storage account used for staging ARM artifacts resides. When not specified, a name will be derived based on
+the Azure location.
+
 .PARAMETER DeployAppOnly
 When specified, the required Azure infrastructure is assumed to be in-place and only the application will be deployed.
 
@@ -122,6 +126,9 @@ function Invoke-MarainServiceDeployment
         
         [Parameter(ParameterSetName = "provision")]
         [string] $AdditionalArmArtifactsFolder,
+
+        [Parameter(ParameterSetName = "provision")]
+        [string] $ArmArtifactStagingResourceGroupName = "arm-deploy-staging-$ResourceGroupLocation",
         
 
         # optional 'deploy' parameters
@@ -164,7 +171,8 @@ function Invoke-MarainServiceDeployment
                                                 -Location $ResourceGroupLocation `
                                                 -ArmTemplatePath $ArmTemplatePath `
                                                 -TemplateParameters ($templateParameters + $AdditionalArmTemplateParameters) `
-                                                -AdditionalArtifactsFolderPath $AdditionalArmArtifactsFolder
+                                                -AdditionalArtifactsFolderPath $AdditionalArmArtifactsFolder `
+                                                -StorageResourceGroupName $ArmArtifactStagingResourceGroupName
 
         Write-Host ("Function app MSI: {0}" -f $results.Outputs.functionServicePrincipalId.Value)
     }
