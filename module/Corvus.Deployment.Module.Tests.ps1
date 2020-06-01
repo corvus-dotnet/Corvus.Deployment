@@ -42,6 +42,10 @@ Describe "Corvus.Deployment Module Tests"  {
       It "$function should exist" {
         $functionPath | Should -Exist
       }
+
+      It "$function should have a copyright block" {
+        $functionPath | Should -FileContentMatch 'Copyright \(c\) Endjin Limited'
+      }
     
       It "$function should have help block" {
         $functionPath | Should -FileContentMatch '<#'
