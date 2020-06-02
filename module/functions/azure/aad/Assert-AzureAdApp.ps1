@@ -35,7 +35,7 @@ function Assert-AzureAdApp
         [string[]]$ReplyUrls
     )
 
-    Write-Host "`nEnsuring Azure AD application {$DisplayName} exists" -ForegroundColor Green
+    Write-Host "Ensuring Azure AD application {$DisplayName} exists..."
 
     $app = Get-AzADApplication -DisplayNameStartWith $DisplayName | `
                 Where-Object {$_.DisplayName -eq $DisplayName}

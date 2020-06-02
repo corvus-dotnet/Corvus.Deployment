@@ -56,7 +56,7 @@ function Assert-AzureAdAppForAppService
     $Principal = Get-AzAdServicePrincipal -ApplicationId $app.ApplicationId
     if (-not $Principal)
     {
-        New-AzAdServicePrincipal -ApplicationId $app.ApplicationId -DisplayName $AppName -SkipAssignment
+        $newSp = New-AzAdServicePrincipal -ApplicationId $app.ApplicationId -DisplayName $AppName -SkipAssignment
     }
 
     $GraphApiAppId = "00000002-0000-0000-c000-000000000000"
