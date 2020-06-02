@@ -134,7 +134,7 @@ function Invoke-ArmTemplateDeployment
     }
 
     # Create the resource group only when it doesn't already exist
-    if ( $null -eq (Get-AzResourceGroup -Name $ResourceGroupName -Location $Location -Verbose -ErrorAction SilentlyContinue) ) {
+    if ( $null -eq (Get-AzResourceGroup -Name $ResourceGroupName -Verbose -ErrorAction SilentlyContinue) ) {
         New-AzResourceGroup -Name $ResourceGroupName -Location $Location -Verbose -Force -ErrorAction Stop
     }
 
