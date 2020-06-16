@@ -6,6 +6,10 @@
       "type": "string",
       "minLength": 1
     },
+    "corsAllowedOrigins": {
+      "type": "array",
+      "defaultValue": []
+    },
     "storageAccountType": {
       "type": "string",
       "defaultValue": "Standard_LRS",
@@ -63,6 +67,9 @@
       },
       "properties": {
         "siteConfig": {
+          "cors": {
+            "allowedOrigins": "[parameters('corsAllowedOrigins')]"
+          },
           "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
           "appSettings": [
             {
