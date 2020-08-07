@@ -1,0 +1,32 @@
+name: publish_to_psgallery
+on:
+- push
+- workflow_dispatch
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    name: Publish to PowerShell Gallery
+    # only trigger for pushed tags
+    if: |
+      startsWith(github.event.ref, 'refs/tags/')
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Get version from tag ref
+      id: get_version
+      run: |
+        regex="refs\/tags\/"
+        echo "::set-output name=VERSION::${GITREF/$regex/}"
+      env:
+        GITREF: ${{ github.event.ref }}
+
+    - run: |
+        Update-ModuleManifest -Path .\module\Corvus.Deployment.psd1 `
+                              -ModuleVersion ${{ steps.get_version.outputs.VERSION }} `
+                              -FunctionsToExport @("*")
+        Publish-Module -Name .\module\Corvus.Deployment.psd1 `
+                              -NuGetApiKey ${{ secrets.ENDJIN_PSGALLERY_APIKEY }} `
+                              -Verbose
+      shell: pwsh
+      name: Publish module

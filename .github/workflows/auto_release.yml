@@ -1,0 +1,37 @@
+name: auto_release
+on: 
+  pull_request:
+    types: [closed]
+
+jobs:
+  tag_for_release:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: '3.1.x'
+    
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    
+    - name: Install GitVersion
+      run: |
+        dotnet tool install -g GitVersion.Tool --version 5.2.4
+        echo "::add-path::/github/home/.dotnet/tools"    
+    - name: Run GitVersion
+      id: run_gitversion
+      run: |
+        pwsh -noprofile -c '(dotnet-gitversion | ConvertFrom-Json).psobject.properties | % { echo ("::set-output name=gitversion_{0}::{1}" -f $_.name, $_.value) }'
+
+    - name: Generate token
+      id: generate_token
+      uses: tibdex/github-app-token@v1
+      with:
+        app_id: ${{ secrets.ENDJIN_BOT_APP_ID }}
+        private_key: ${{ secrets.ENDJIN_BOT_PRIVATE_KEY }}
+
+    - uses: hole19/git-tag-action@master
+      env:
+        TAG: ${{ steps.run_gitversion.outputs.gitversion_SemVer }}
+        GITHUB_TOKEN: '${{ steps.generate_token.outputs.token }}'
