@@ -39,7 +39,7 @@ jobs:
     - run: |
         Update-ModuleManifest -Path ${{ steps.get_config.outputs.module_manifest_path }} `
                               -ModuleVersion ${{ steps.run_gitversion.outputs.gitversion_MajorMinorPatch }} `
-                              -Prerelease ("${{ steps.run_gitversion.outputs.gitversion_PreReleaseTag }}" -replace "\.","")
+                              -Prerelease ("${{ steps.run_gitversion.outputs.gitversion_PreReleaseTag }}" -replace "[-\.]","") `
                               -FunctionsToExport @("*") `
                               -CmdletsToExport @() `
                               -AliasesToExport @()
