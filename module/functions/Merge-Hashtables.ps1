@@ -28,6 +28,8 @@ Hashtable
 
 
 #>
+
+#SUPPRESS-ParameterChecks
 function Merge-Hashtables
 {
     $output = @{}

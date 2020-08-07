@@ -15,6 +15,7 @@ The path to the file being dot sourced.
 #>
 function _DotSourceScriptFile
 {
+    [CmdletBinding()]
     param
     (
         $Path

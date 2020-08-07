@@ -1,0 +1,42 @@
+name: publish_to_psgallery
+on:
+- push
+- workflow_dispatch
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    name: Publish to PowerShell Gallery
+    # only trigger for pushed tags
+    if: |
+      startsWith(github.event.ref, 'refs/tags/')
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Get version from tag ref
+      id: get_version
+      run: |
+        regex="refs\/tags\/"
+        echo "::set-output name=VERSION::${GITREF/$regex/}"
+      env:
+        GITREF: ${{ github.event.ref }}
+
+    - name: Read workflow configuration
+      id: get_config
+      run: |
+        config=`cat .workflow-config.json`
+        echo "::set-output name=configJson::$config"
+        MODULE_MANIFEST_PATH=`echo $(jq -r .module_manifest_path <<< $config)`
+        echo "::set-output name=module_manifest_path::$MODULE_MANIFEST_PATH"
+
+    - run: |
+        Update-ModuleManifest -Path ${{ steps.get_config.outputs.module_manifest_path }} `
+                              -ModuleVersion ${{ steps.get_version.outputs.VERSION }} `
+                              -FunctionsToExport @("*") `
+                              -CmdletsToExport @() `
+                              -AliasesToExport @()
+        Publish-Module -Name ${{ steps.get_config.outputs.module_manifest_path }} `
+                              -NuGetApiKey ${{ secrets.ENDJIN_PSGALLERY_APIKEY }} `
+                              -Verbose
+      shell: pwsh
+      name: Publish module

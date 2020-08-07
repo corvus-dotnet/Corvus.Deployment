@@ -1,8 +1,5 @@
-# <copyright file="Corvus.Deployment.psd1" company="Endjin Limited">
-# Copyright (c) Endjin Limited. All rights reserved.
-# </copyright>
 #
-# Module manifest for module 'endjin.deployment'
+# Module manifest for module 'Corvus.Deployment'
 #
 @{
 
@@ -10,7 +7,7 @@
 RootModule = 'Corvus.Deployment.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.0.1'
+ModuleVersion = '0.0.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -28,10 +25,10 @@ CompanyName = 'Endjin Limited'
 Copyright = '(c) endjin. All rights reserved.'
 
 # Description of the functionality provided by this module
-# Description = ''
+Description = 'A collection of useful functions for Azure deployment automation'
 
 # Minimum version of the PowerShell engine required by this module
-# PowerShellVersion = ''
+PowerShellVersion = '6.0'
 
 # Name of the PowerShell host required by this module
 # PowerShellHostName = ''
@@ -67,13 +64,13 @@ Copyright = '(c) endjin. All rights reserved.'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-# FunctionsToExport = @()
+FunctionsToExport = '*'
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()
 
 # Variables to export from this module
-# VariablesToExport = '*'
+# VariablesToExport = @()
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
 AliasesToExport = @()
@@ -102,7 +99,7 @@ PrivateData = @{
         ProjectUri = 'https://github.com/corvus-dotnet/Corvus.Deployment'
 
         # A URL to an icon representing this module.
-        # IconUri = ''
+        IconUri = 'https://www.nuget.org/profiles/corvus-dotnet/avatar'
 
         # ReleaseNotes of this module
         # ReleaseNotes = ''
@@ -111,14 +108,14 @@ PrivateData = @{
         # Prerelease = ''
 
         # Flag to indicate whether the module requires explicit user acceptance for install/update/save
-        RequireLicenseAcceptance = $false
+        # RequireLicenseAcceptance = $false
 
         # External dependent modules of this module
         # ExternalModuleDependencies = @()
 
     } # End of PSData hashtable
 
-} # End of PrivateData hashtable
+ } # End of PrivateData hashtable
 
 # HelpInfo URI of this module
 # HelpInfoURI = ''

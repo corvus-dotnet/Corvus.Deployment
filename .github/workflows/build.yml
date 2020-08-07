@@ -1,0 +1,39 @@
+name: build
+on:
+- push
+- workflow_dispatch
+
+jobs:
+  run_tests:
+    runs-on: ubuntu-latest
+    name: Run Pester tests
+    steps:
+    - uses: actions/checkout@v2
+    - run: pwsh -f ./run-tests.ps1
+
+  run_gitversion:
+    runs-on: ubuntu-latest
+    name: Run GitVersion
+    outputs:
+      semver: ${{ steps.gitversion.outputs.semver }}
+      preReleaseTag: ${{ steps.gitversion.outputs.preReleaseTag }}
+    steps:
+    - uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: '3.1.x'
+    
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    
+    - name: Install GitVersion
+      run: |
+        dotnet tool install -g GitVersion.Tool --version 5.2.4
+        echo "::add-path::/github/home/.dotnet/tools"
+    - name: Run GitVersion
+      id: run_gitversion
+      run: |
+        pwsh -noprofile -c '(dotnet-gitversion | ConvertFrom-Json).psobject.properties | % { echo ("::set-output name=gitversion_{0}::{1}" -f $_.name, $_.value) }'
+
+    - run: |
+        echo "SemVer: ${{ steps.run_gitversion.outputs.gitversion_SemVer }}"
