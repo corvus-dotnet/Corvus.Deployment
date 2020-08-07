@@ -21,7 +21,6 @@ jobs:
         echo "::set-output name=configJson::$config"
         MODULE_MANIFEST_PATH=`echo $(jq -r .module_manifest_path <<< $config)`
         echo "::set-output name=module_manifest_path::$MODULE_MANIFEST_PATH"
-
     # GitVersion related steps
     - uses: actions/setup-dotnet@v1
       with:
@@ -34,12 +33,11 @@ jobs:
       id: run_gitversion
       run: |
         pwsh -noprofile -c '(dotnet-gitversion | ConvertFrom-Json).psobject.properties | % { echo ("::set-output name=gitversion_{0}::{1}" -f $_.name, $_.value) }'
-
     # Publish to PSGallery
     - run: |
         Update-ModuleManifest -Path ${{ steps.get_config.outputs.module_manifest_path }} `
                               -ModuleVersion ${{ steps.run_gitversion.outputs.gitversion_MajorMinorPatch }} `
-                              -Prerelease ("${{ steps.run_gitversion.outputs.gitversion_PreReleaseTag }}" -replace "[-\.]","") `
+                              -Prerelease ${{ steps.run_gitversion.outputs.gitversion_NuGetPreReleaseTag }} `
                               -FunctionsToExport @("*") `
                               -CmdletsToExport @() `
                               -AliasesToExport @()
