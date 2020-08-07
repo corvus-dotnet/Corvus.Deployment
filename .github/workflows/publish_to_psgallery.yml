@@ -24,7 +24,9 @@ jobs:
     - run: |
         Update-ModuleManifest -Path .\module\Corvus.Deployment.psd1 `
                               -ModuleVersion ${{ steps.get_version.outputs.VERSION }} `
-                              -FunctionsToExport @("*")
+                              -FunctionsToExport @("*") `
+                              -CmdletsToExport @() `
+                              -AliasesToExport @()
         Publish-Module -Name .\module\Corvus.Deployment.psd1 `
                               -NuGetApiKey ${{ secrets.ENDJIN_PSGALLERY_APIKEY }} `
                               -Verbose
