@@ -12,15 +12,8 @@ jobs:
       startsWith(github.event.ref, 'refs/tags/')
     steps:
     - uses: actions/checkout@v2
-
-    - name: Get version from tag ref
-      id: get_version
-      run: |
-        regex="refs\/tags\/"
-        echo "::set-output name=VERSION::${GITREF/$regex/}"
-      env:
-        GITREF: ${{ github.event.ref }}
-
+      with:
+        fetch-depth: 0
     - name: Read workflow configuration
       id: get_config
       run: |
@@ -29,14 +22,30 @@ jobs:
         MODULE_MANIFEST_PATH=`echo $(jq -r .module_manifest_path <<< $config)`
         echo "::set-output name=module_manifest_path::$MODULE_MANIFEST_PATH"
 
+    # GitVersion related steps
+    - uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: '3.1.x'
+    - name: Install GitVersion
+      run: |
+        dotnet tool install -g GitVersion.Tool --version 5.2.4
+        echo "::add-path::/github/home/.dotnet/tools"
+    - name: Run GitVersion
+      id: run_gitversion
+      run: |
+        pwsh -noprofile -c '(dotnet-gitversion | ConvertFrom-Json).psobject.properties | % { echo ("::set-output name=gitversion_{0}::{1}" -f $_.name, $_.value) }'
+
+    # Publish to PSGallery
     - run: |
         Update-ModuleManifest -Path ${{ steps.get_config.outputs.module_manifest_path }} `
-                              -ModuleVersion ${{ steps.get_version.outputs.VERSION }} `
+                              -ModuleVersion ${{ steps.run_gitversion.outputs.gitversion_MajorMinorPatch }} `
+                              -Prerelease ("${{ steps.run_gitversion.outputs.gitversion_PreReleaseTag }}" -replace "\.","")
                               -FunctionsToExport @("*") `
                               -CmdletsToExport @() `
                               -AliasesToExport @()
         Publish-Module -Name ${{ steps.get_config.outputs.module_manifest_path }} `
                               -NuGetApiKey ${{ secrets.ENDJIN_PSGALLERY_APIKEY }} `
+                              -AllowPrerelease `
                               -Verbose
       shell: pwsh
       name: Publish module
