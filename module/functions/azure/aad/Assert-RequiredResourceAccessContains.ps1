@@ -23,6 +23,7 @@ The AzureAD application's manifest returned by the Azure Graph REST API.
 #>
 function Assert-RequiredResourceAccessContains
 {
+    [CmdletBinding()]
     param
     (
         [Parameter(Mandatory=$true)]

@@ -17,6 +17,7 @@ The AzureAD application's manifest returned by the Azure Graph REST API.
 #>
 function Get-AzureADApplicationManifest
 {
+    [CmdletBinding()]
     param
     (
         [Parameter(Mandatory=$true)]

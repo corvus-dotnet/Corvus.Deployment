@@ -17,6 +17,7 @@ The AzureAD Graph REST API request URI as a string.
 #>
 function Get-AzureAdGraphApiAppUri
 {
+    [CmdletBinding()]
     param
     (
         [Parameter(Mandatory=$true)]

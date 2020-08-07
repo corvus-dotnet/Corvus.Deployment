@@ -66,8 +66,11 @@ Describe "Corvus.Deployment Module Tests"  {
     
       It "$function should be an advanced function" {
         $functionPath | Should -FileContentMatch 'function'
-        $functionPath | Should -FileContentMatch 'cmdletbinding'
-        $functionPath | Should -FileContentMatch 'param'
+        $functionContent = Get-Content -raw $functionPath
+        if ($functionContent -notmatch '#SUPPRESS-ParameterChecks') {
+          $functionPath | Should -FileContentMatch 'cmdletbinding'
+          $functionPath | Should -FileContentMatch 'param'
+        }
       }
       
       It "$function is valid PowerShell code" {
