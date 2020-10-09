@@ -85,7 +85,9 @@ function Invoke-ArmTemplateDeployment
             $StagingStorageAccountName = ('stage{0}{1}' -f $Location, ($script:AzContext.Subscription.Id).Replace('-', '').ToLowerInvariant()).SubString(0, 24)
         }
         $StorageContainerName = $ResourceGroupName.ToLowerInvariant().Replace(".", "") + '-stageartifacts'
-        $StorageAccount = Get-AzStorageAccount -ResourceGroupName $StorageResourceGroupName -Name $StagingStorageAccountName -ErrorAction SilentlyContinue
+
+        # Lookup whether the storage account already exists elsewhere in the current subscription
+        $StorageAccount = Get-AzStorageAccount | Where-Object { $_.StorageAccountName -eq $StagingStorageAccountName }
 
         # Create the storage account if it doesn't already exist
         if ($null -eq $StorageAccount) {
@@ -112,15 +114,17 @@ function Invoke-ArmTemplateDeployment
         }
 
         # upload any additional linked templates
-        $additionalArtifactFilePaths = Get-ChildItem $AdditionalArtifactsFolderPath -Recurse -File | ForEach-Object -Process {$_.FullName}
-        foreach ($SourcePath in $additionalArtifactFilePaths) {
-            Set-AzStorageBlobContent `
-                -File $SourcePath `
-                -Blob $SourcePath.Substring($AdditionalArtifactsFolderPath.length + 1) `
-                -Container $StorageContainerName `
-                -Context $StorageAccount.Context `
-                -Force `
-                -Verbose:$false | Out-Null
+        if ($AdditionalArtifactsFolderPath) {
+            $additionalArtifactFilePaths = Get-ChildItem $AdditionalArtifactsFolderPath -Recurse -File | ForEach-Object -Process {$_.FullName}
+            foreach ($SourcePath in $additionalArtifactFilePaths) {
+                Set-AzStorageBlobContent `
+                    -File $SourcePath `
+                    -Blob $SourcePath.Substring($AdditionalArtifactsFolderPath.length + 1) `
+                    -Container $StorageContainerName `
+                    -Context $StorageAccount.Context `
+                    -Force `
+                    -Verbose:$false | Out-Null
+            }
         }
 
         $OptionalParameters[$ArtifactsLocationName] = $StorageAccount.Context.BlobEndPoint + $StorageContainerName
@@ -156,8 +160,7 @@ function Invoke-ArmTemplateDeployment
                 -Name $deployName `
                 -ResourceGroupName $ResourceGroupName `
                 -TemplateFile $ArmTemplatePath `
-                @OptionalParameters `
-                @TemplateParameters `
+                -TemplateParameterObject ($TemplateParameters + $OptionalParameters) `
                 -Force `
                 -Verbose
 
@@ -166,7 +169,10 @@ function Invoke-ArmTemplateDeployment
             Write-Host "ARM template deployment successful"
         }
         catch {
-            if ($_.Exception.Message -match "Code=InvalidTemplate") {
+            # Catch any exceptions that indicate a template issue
+            if ($_.Exception.Message -match "Code=InvalidTemplate" -or 
+                    $_.Exception -is [Newtonsoft.Json.JsonReaderException]
+                ) {
                 Write-Host "Invalid ARM template error detected - skipping retries"
                 throw $_
             }
