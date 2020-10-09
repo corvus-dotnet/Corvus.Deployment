@@ -160,7 +160,8 @@ function Invoke-ArmTemplateDeployment
                 -Name $deployName `
                 -ResourceGroupName $ResourceGroupName `
                 -TemplateFile $ArmTemplatePath `
-                -TemplateParameterObject ($TemplateParameters + $OptionalParameters) `
+                @OptionalParameters `
+                @TemplateParameters `
                 -Force `
                 -Verbose
 
