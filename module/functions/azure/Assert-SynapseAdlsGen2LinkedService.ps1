@@ -1,5 +1,5 @@
 #requires -Modules MSAL.PS
-# <copyright file="Assert-SynapseBlobFsLinkedService.ps1" company="Endjin Limited">
+# <copyright file="Assert-SynapseAdlsGen2LinkedService.ps1" company="Endjin Limited">
 # Copyright (c) Endjin Limited. All rights reserved.
 # </copyright>
 
@@ -36,7 +36,7 @@ Synapse LinkedService object
 
 
 #>
-function Assert-SynapseBlobFsLinkedService
+function Assert-SynapseAdlsGen2LinkedService
 {
     [CmdletBinding()]
     param (
@@ -96,23 +96,32 @@ function Assert-SynapseBlobFsLinkedService
                               -Headers $headers `
                               -Body ($body|ConvertTo-Json -Compress -Depth 10)
 
+    $isComplete = $false
+    $retry = 0
+    $maxRetries = 5
+    # NOTE: Potentially consider referencing eTags if we need more control over waiting for updates
     if ($resp.state -in @('Creating','Updating')) {
         Write-Host "Waiting for LinkedService operation to complete..."
-        while($true) {
+        while(!$isComplete -and $retry -le $maxRetries) {
             Start-Sleep -Seconds 10
             try {
-                $linkedService = Invoke-RestMethod -Uri $uri -Headers $headers
+                $linkedService = Invoke-RestMethod -Uri $uri -Method Get -Headers $headers
+                $isComplete = $true
             }
             catch {
                 if ($_.Exception.Response.StatusCode -eq 404) {
+                    $retry++
                     continue
                 }
                 else {
                     throw $_
                 }
             }
-            break
         }
+    }
+
+    if (!$isComplete) {
+        throw "Timeout whilst waiting for LinkedService configuration to complete"
     }
 
     $linkedService
