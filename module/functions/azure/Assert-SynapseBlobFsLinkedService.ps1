@@ -19,15 +19,12 @@ function Assert-SynapseBlobFsLinkedService
         [securestring] $ClientSecret = $null
     )
 
+    # Setup request for a linked service that uses the Synapse managed identity
     $body = @{
         properties = @{
             type = "AzureBlobFS"
             typeProperties = @{
                 url = "https://$($StorageAccountName).dfs.core.windows.net"
-                accountKey = @{
-                    type = "SecureString"
-                    value = $StorageAccountKey
-                }
             }
             connectVia = @{
                 referenceName = "AutoResolveIntegrationRuntime"
@@ -44,7 +41,7 @@ function Assert-SynapseBlobFsLinkedService
     }
 
     # use PS7 null conditional assignment 
-    $ClientSecret ??= $env:AZURE_CLIENT_SECRET
+    $ClientSecret ??= $env:AZURE_CLIENT_SECRET | ConvertTo-SecureString -AsPlainText -Force
     if ($null -eq $ClientSecret) {
         throw "Missing ClientSecret - You must provide the '-ClientSecret' parameter or set the 'AZURE_CLIENT_SECRET' environment variable"
     }
