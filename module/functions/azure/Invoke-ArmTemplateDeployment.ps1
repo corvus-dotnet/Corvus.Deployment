@@ -137,6 +137,14 @@ function Invoke-ArmTemplateDeployment
         $OptionalParameters[$ArtifactsLocationSasTokenName] = ConvertTo-SecureString -AsPlainText -Force $StagingSasToken
     }
 
+    Write-Host "Validating ARM template ($ArmTemplatePath)..."
+    $testResult = Test-AzResourceGroupDeployment `
+                        -ResourceGroupName $ResourceGroupName `
+                        -TemplateFile $ArmTemplatePath `
+                        @OptionalParameters `
+                        @TemplateParameters `
+                        -Verbose
+
     # Create the resource group only when it doesn't already exist
     if ( $null -eq (Get-AzResourceGroup -Name $ResourceGroupName -Verbose -ErrorAction SilentlyContinue) ) {
         New-AzResourceGroup -Name $ResourceGroupName -Location $Location -Verbose -Force -ErrorAction Stop
