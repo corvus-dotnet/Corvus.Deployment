@@ -20,12 +20,6 @@
     "defaultDataLakeStorageFilesystemName": {
       "type": "string"
     },
-    "sqlAdministratorLogin": {
-      "type": "string"
-    },
-    "sqlAdministratorLoginPassword": {
-      "type": "securestring"
-    },
     "setWorkspaceIdentityRbacOnStorageAccount": {
       "type": "bool"
     },
@@ -89,6 +83,12 @@
 			"type": "string",
 			"defaultValue": ""
 		},
+    "sqlAdministratorPrincipalName": {
+			"type": "string"
+		},
+    "sqlAdministratorPrincipalId": {
+			"type": "string"
+		},
     "setSbdcRbacOnStorageAccount": {
       "type": "bool",
       "defaultValue": false
@@ -121,8 +121,6 @@
           "accountUrl": "[variables('defaultDataLakeStorageAccountUrl')]",
           "filesystem": "[parameters('defaultDataLakeStorageFilesystemName')]"
         },
-        "sqlAdministratorLogin": "[parameters('sqlAdministratorLogin')]",
-        "sqlAdministratorLoginPassword": "[parameters('sqlAdministratorLoginPassword')]",
         "adlaResourceId": "[parameters('adlaResourceId')]",
         "managedVirtualNetwork": "[parameters('managedVirtualNetwork')]"
       },
@@ -154,6 +152,21 @@
             }
           },
           "type": "managedIdentitySqlControlSettings"
+        },
+        {
+          "type": "administrators",
+          "name": "activeDirectory",
+          "apiVersion": "2019-06-01-preview",
+          "location": "[parameters('location')]",
+          "properties": {
+              "administratorType": "ActiveDirectory",
+              "login": "[parameters('sqlAdministratorPrincipalName')]",
+              "sid": "[parameters('sqlAdministratorPrincipalId')]",
+              "tenantId": "[subscription().tenantId]"
+          },
+          "dependsOn": [
+              "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
+          ]
         }
       ],
       "dependsOn": [
