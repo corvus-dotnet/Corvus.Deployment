@@ -4,40 +4,52 @@ on:
 - workflow_dispatch
 
 jobs:
-  publish:
+  run_gitversion:
     runs-on: ubuntu-latest
-    name: Publish to PowerShell Gallery
+    name: Run GitVersion
     # only trigger for pushed tags
     if: |
       startsWith(github.event.ref, 'refs/tags/')
+    outputs:
+      majorMinorPatch: ${{ steps.run_gitversion.outputs.MajorMinorPatch }}
+      nuGetPreReleaseTag: ${{ steps.run_gitversion.outputs.NuGetPreReleaseTag }}
     steps:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
-    - name: Read workflow configuration
-      id: get_config
-      run: |
-        config=`cat .workflow-config.json`
-        echo "::set-output name=configJson::$config"
-        MODULE_MANIFEST_PATH=`echo $(jq -r .module_manifest_path <<< $config)`
-        echo "::set-output name=module_manifest_path::$MODULE_MANIFEST_PATH"
-    # GitVersion related steps
     - uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: '3.1.x'
+        dotnet-version: '3.1.402'
     - name: Install GitVersion
       run: |
         dotnet tool install -g GitVersion.Tool --version 5.2.4
-        echo "::add-path::/github/home/.dotnet/tools"
+        echo "::add-path::/github/home/.dotnet/tools"    
     - name: Run GitVersion
       id: run_gitversion
       run: |
-        pwsh -noprofile -c '(dotnet-gitversion | ConvertFrom-Json).psobject.properties | % { echo ("::set-output name=gitversion_{0}::{1}" -f $_.name, $_.value) }'
-    # Publish to PSGallery
+        pwsh -noprofile -c '(dotnet-gitversion | ConvertFrom-Json).psobject.properties | % { echo ("::set-output name={0}::{1}" -f $_.name, $_.value) }'
+
+  publish_to_psgallery:
+    runs-on: ubuntu-latest
+    name: Publish to PowerShell Gallery
+    needs: run_gitversion
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Read workflow configuration
+      id: get_config
+      uses: endjin/pr-autoflow/actions/read-configuration@v1
+      with:
+        config_file: .github/config/ps-module.json
+  
     - run: |
+        # Ensure any required modules are installed
+        $manifest = Get-Content -Raw ${{ steps.get_config.outputs.module_manifest_path }} | Invoke-Expression
+        $manifest.RequiredModules | Where-Object { $_ } | ForEach-Object { Install-Module -Name $_ -Scope CurrentUser -Force -Repository PSGallery }
+
         Update-ModuleManifest -Path ${{ steps.get_config.outputs.module_manifest_path }} `
-                              -ModuleVersion ${{ steps.run_gitversion.outputs.gitversion_MajorMinorPatch }} `
-                              -Prerelease ${{ steps.run_gitversion.outputs.gitversion_NuGetPreReleaseTag }} `
+                              -ModuleVersion ${{ needs.run_gitversion.outputs.majorMinorPatch }} `
+                              -Prerelease "${{ needs.run_gitversion.outputs.nuGetPreReleaseTag }}" `
                               -FunctionsToExport @("*") `
                               -CmdletsToExport @() `
                               -AliasesToExport @()
