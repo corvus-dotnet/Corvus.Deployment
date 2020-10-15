@@ -1,4 +1,41 @@
 #requires -Modules MSAL.PS
+# <copyright file="Assert-SynapseBlobFsLinkedService.ps1" company="Endjin Limited">
+# Copyright (c) Endjin Limited. All rights reserved.
+# </copyright>
+
+<#
+.SYNOPSIS
+Creates or updates a linked service that connects an ADLS Gen2 storage account to a Synapse workspace
+
+.DESCRIPTION
+Creates or updates a linked service that connects an ADLS Gen2 storage account to a Synapse workspace.
+
+The Synapse workspace managed identity must have access the underlying storage account.
+
+The service principal credentials can be passed as parameters, or defined in the following environment variables:
+    AZURE_CLIENT_ID
+    AZURE_CLIENT_SECRET
+
+.PARAMETER WorkspaceName
+The Synapse workspace name
+
+.PARAMETER StorageAccountName
+The ADLS Gen2 storage account to link to
+
+.PARAMETER ClientId
+The AzureAD AppId of a service principal with Admin access to the Synapse workspace
+
+.PARAMETER ClientSecret
+The password for the service principal with Admin access to the Synapse workspace
+
+.OUTPUTS
+Synapse LinkedService object
+
+.EXAMPLE
+
+
+
+#>
 function Assert-SynapseBlobFsLinkedService
 {
     [CmdletBinding()]
@@ -8,9 +45,6 @@ function Assert-SynapseBlobFsLinkedService
 
         [Parameter(Mandatory=$True)]
         [string] $StorageAccountName,
-
-        [Parameter(Mandatory=$True)]
-        [string] $StorageAccountKey,
 
         [Parameter()]
         [guid] $ClientId = [guid]::Empty,
