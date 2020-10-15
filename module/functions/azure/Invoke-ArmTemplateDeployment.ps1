@@ -138,12 +138,16 @@ function Invoke-ArmTemplateDeployment
     }
 
     Write-Host "Validating ARM template ($ArmTemplatePath)..."
-    $testResult = Test-AzResourceGroupDeployment `
+    $validationErrors = Test-AzResourceGroupDeployment `
                         -ResourceGroupName $ResourceGroupName `
                         -TemplateFile $ArmTemplatePath `
                         @OptionalParameters `
                         @TemplateParameters `
                         -Verbose
+    if ($validationErrors) {
+        Write-Warning ($validationErrors | Format-List | Out-String)
+        throw "ARM Template validation errors - check previous warnings"
+    }
 
     # Create the resource group only when it doesn't already exist
     if ( $null -eq (Get-AzResourceGroup -Name $ResourceGroupName -Verbose -ErrorAction SilentlyContinue) ) {
