@@ -1,4 +1,3 @@
-#requires -Modules MSAL.PS
 # <copyright file="Assert-SynapseAdlsGen2LinkedService.ps1" company="Endjin Limited">
 # Copyright (c) Endjin Limited. All rights reserved.
 # </copyright>
