@@ -137,6 +137,11 @@ function Invoke-ArmTemplateDeployment
         $OptionalParameters[$ArtifactsLocationSasTokenName] = ConvertTo-SecureString -AsPlainText -Force $StagingSasToken
     }
 
+    # Create the resource group only when it doesn't already exist
+    if ( $null -eq (Get-AzResourceGroup -Name $ResourceGroupName -Verbose -ErrorAction SilentlyContinue) ) {
+        New-AzResourceGroup -Name $ResourceGroupName -Location $Location -Verbose -Force -ErrorAction Stop
+    }
+
     Write-Host "Validating ARM template ($ArmTemplatePath)..."
     $validationErrors = Test-AzResourceGroupDeployment `
                         -ResourceGroupName $ResourceGroupName `
@@ -147,11 +152,6 @@ function Invoke-ArmTemplateDeployment
     if ($validationErrors) {
         Write-Warning ($validationErrors | Format-List | Out-String)
         throw "ARM Template validation errors - check previous warnings"
-    }
-
-    # Create the resource group only when it doesn't already exist
-    if ( $null -eq (Get-AzResourceGroup -Name $ResourceGroupName -Verbose -ErrorAction SilentlyContinue) ) {
-        New-AzResourceGroup -Name $ResourceGroupName -Location $Location -Verbose -Force -ErrorAction Stop
     }
 
     # Deploy the ARM template with a built-in retry loop to try and limit the disruption from spurious ARM errors
