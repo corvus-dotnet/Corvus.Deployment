@@ -13,14 +13,6 @@
         "Premium_LRS"
       ]
     },
-    "storageAccessTier": {
-      "type": "string",
-      "defaultValue": "Hot",
-      "allowedValues": [
-        "Cool",
-        "Hot"
-      ]
-    },
     "storageAccountName": {
       "type": "string",
       "minLength": 1
@@ -28,21 +20,6 @@
     "storageAccountLocation": {
       "type": "string",
       "defaultValue": "[resourceGroup().location]"
-    },
-    "storageContainerNames": {
-      "type": "array",
-      "metadata": {
-          "description": "Array of names to create storage containers."
-      },
-      "defaultValue": []
-    },
-    "supportsHttpsTrafficOnly": {
-      "type": "bool",
-      "defaultValue": true
-    },
-    "isHnsEnabled": {
-        "type": "bool",
-        "defaultValue": false
     },
     "tagValues": {
       "type": "object",
@@ -52,7 +29,7 @@
   "variables": {
     "ownerRoleId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', '8e3af657-a8ff-443c-a75c-2fe8c4bcb635')]",
     "localTags": {
-      "displayName": "[parameters('storageAccountName')]"
+      "displayName": "storageAccountName"
     },
     "tags": "[union(parameters('tagValues'), variables('localTags'))]"
   },
@@ -65,28 +42,10 @@
       "sku": {
         "name": "[parameters('storageAccountType')]"
       },
-      "properties": {
-        "accessTier": "[parameters('storageAccessTier')]",
-        "supportsHttpsTrafficOnly": "[parameters('supportsHttpsTrafficOnly')]",
-        "isHnsEnabled": "[parameters('isHnsEnabled')]"
-      },
       "dependsOn": [],
       "tags": "[variables('tags')]",
       "kind": "StorageV2"
     },
-    {
-      "condition": "[not(empty(parameters('storageContainerNames')))]",
-      "name": "[concat(parameters('storageAccountName'), '/default/', if(not(empty(parameters('storageContainerNames'))), parameters('storageContainerNames')[copyIndex()], 'null'))]",
-      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
-      "apiVersion": "2018-07-01",
-      "dependsOn": [
-          "[parameters('storageAccountName')]"
-      ],
-      "copy": {
-          "name": "storageContainers",
-          "count": "[if(not(empty(parameters('storageContainerNames'))), length(parameters('storageContainerNames')), 1)]"
-      }
-    }
   ],
   "outputs": {
     "storageAccountKey": {
