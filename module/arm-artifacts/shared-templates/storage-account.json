@@ -54,7 +54,7 @@
     "localTags": {
       "displayName": "[parameters('storageAccountName')]"
     },
-    "isHnsEnabledBackwardsCompatValue": "[if(equals(parameters('isHnsEnabled'),json('false')), json('null'), parameters('isHnsEnabled'))]",
+    "isHnsEnabledBackwardsCompatValue": "[if(equals(parameters('isHnsEnabled'),json('false')), '', parameters('isHnsEnabled'))]",
     "tags": "[union(parameters('tagValues'), variables('localTags'))]"
   },
   "resources": [
