@@ -52,7 +52,12 @@ function Assert-AzureAdSecurityGroup
 
             $updateCmd = "rest --uri 'https://graph.microsoft.com/v1.0/groups/$($existingGroup.Id)' --method 'PATCH' --body '$updateBodyToJson' --headers content-type=application/json"
 
-            Invoke-AzCli -Command $updateCmd -asJson
+            $response = Invoke-AzCli -Command $updateCmd -asJson
+
+            return $response
+        }
+        else {
+            return $existingGroup
         }
     }
 
@@ -71,7 +76,10 @@ function Assert-AzureAdSecurityGroup
         $bodyToJson = (ConvertTo-Json $body -Compress).replace('"','\"').replace(':\', ': \')
     
         $cmd = "rest --uri 'https://graph.microsoft.com/v1.0/groups' --method 'POST' --body '$bodyToJson' --headers content-type=application/json"
-        Invoke-AzCli -Command $cmd -asJson
+        
+        $response = Invoke-AzCli -Command $cmd -asJson
+
+        return $response
     }
 
     $existingGroupCmd = 'rest --uri "https://graph.microsoft.com/v1.0/groups?`$filter=displayName eq {0}" --method "GET"' -f "`'$name`'"
@@ -81,15 +89,17 @@ function Assert-AzureAdSecurityGroup
     if ($existingGroup) {
         Write-Host "Security group with name $($existingGroup.displayName) already exists."
 
-        _updateGroup
+        $result = _updateGroup
 
         Write-Host "Description field updated."
     }
     else {
         Write-Host "Security group with name $Name doesn't exist. Creating..."
 
-        _createGroup
+        $result = _createGroup
 
         Write-Host "AAD Security group created."
     }
+
+    return $result
 }
