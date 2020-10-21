@@ -48,13 +48,17 @@ function Assert-AzureAdSecurityGroup
                 description = $Description                
             }
         
-            $updateBodyToJson = (ConvertTo-Json $updateBody -Compress).replace('"','\"').replace(':\', ': \')
+            $updateBodyToJson = (ConvertTo-Json $updateBody -Compress).replace('"','\"').replace(':\', ': \').replace("'", "''")
 
             $updateCmd = "rest --uri 'https://graph.microsoft.com/v1.0/groups/$($existingGroup.Id)' --method 'PATCH' --body '$updateBodyToJson' --headers content-type=application/json"
 
-            $response = Invoke-AzCli -Command $updateCmd -asJson
+            Invoke-AzCli -Command $updateCmd -asJson
 
-            return $response
+            Write-Host "Description field updated."
+
+            $existingGroup.description = $Description
+
+            return $existingGroup
         }
         else {
             return $existingGroup
@@ -73,7 +77,7 @@ function Assert-AzureAdSecurityGroup
             $body["description"] = $Description
         }
     
-        $bodyToJson = (ConvertTo-Json $body -Compress).replace('"','\"').replace(':\', ': \')
+        $bodyToJson = (ConvertTo-Json $body -Compress).replace('"','\"').replace(':\', ': \').replace("'", "''")
     
         $cmd = "rest --uri 'https://graph.microsoft.com/v1.0/groups' --method 'POST' --body '$bodyToJson' --headers content-type=application/json"
         
@@ -84,14 +88,12 @@ function Assert-AzureAdSecurityGroup
 
     $existingGroupCmd = 'rest --uri "https://graph.microsoft.com/v1.0/groups?`$filter=displayName eq {0}" --method "GET"' -f "`'$name`'"
 
-    $existingGroup = (Invoke-AzCli -Command $existingGroupCmd -asJson).value
+    $existingGroup = (Invoke-AzCli -Command $existingGroupCmd -asJson).value[0]
 
     if ($existingGroup) {
         Write-Host "Security group with name $($existingGroup.displayName) already exists."
 
         $result = _updateGroup
-
-        Write-Host "Description field updated."
     }
     else {
         Write-Host "Security group with name $Name doesn't exist. Creating..."
