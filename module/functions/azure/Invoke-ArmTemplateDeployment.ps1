@@ -150,7 +150,7 @@ function Invoke-ArmTemplateDeployment
                         @TemplateParameters `
                         -Verbose
     if ($validationErrors) {
-        Write-Warning ($validationErrors | Format-List | Out-String)
+        Write-Warning ($validationErrors | Out-String)
         throw "ARM Template validation errors - check previous warnings"
     }
 
