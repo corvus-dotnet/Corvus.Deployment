@@ -28,9 +28,8 @@ function Assert-AzCliLogin {
     )
     try {
         # check whether already logged-in
-        # $currentToken = Invoke-AzCli "account get-access-token --subscription $SubscriptionId" -asJson
-        $currentToken = & az account get-access-token --subscription $SubscriptionId -asJson 2>&1 | Out-Null
-        if ([datetime]$currentToken.expiresOn -le [datetime]::Now) {
+        [datetime]$currentTokenExpiry = & az account get-access-token --subscription $SubscriptionId -o tsv --query "expiresOn" 2>&1
+        if ($currentTokenExpiry -le [datetime]::Now) {
             throw
         }
     }
