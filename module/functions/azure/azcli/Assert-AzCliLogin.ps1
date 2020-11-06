@@ -19,6 +19,9 @@ The target Azure Subscription ID.
 .PARAMETER AadTenantId
 The AzureAD Tenant ID associated with subscription.
 
+.OUTPUTS
+Returns the details of the logged-in account (i.e. the output from 'az account show').
+
 #>
 function Assert-AzCliLogin {
     [CmdletBinding()]

@@ -18,6 +18,9 @@ Controls whether you expect the command to have a JSON response that you want re
 .PARAMETER ExpectedExitCodes
 An array of exit codes that will not be treated as signifying an error.
 
+.OUTPUTS
+When the '-AsJon' parameter is supplied, the JSON output from azure-cli will be returned as a hashtable.
+
 #>
 function Invoke-AzCli
 {
@@ -44,6 +47,6 @@ function Invoke-AzCli
     }
 
     if ($asJson) {
-        return ($res | ConvertFrom-Json)
+        return ($res | ConvertFrom-Json -Depth 30 -AsHashtable)
     }
 }

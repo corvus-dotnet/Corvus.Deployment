@@ -27,6 +27,9 @@ Sets the installation scope of the module.
 .PARAMETER PSRepository
 Sets the PowerShell repository used as the source (e.g. PSGallery)
 
+.OUTPUTS
+Returns the 'PSModuleInfo' object for the asserted module - this can be used by the caller to easily import the module.
+
 #>
 function Assert-Module
 {
