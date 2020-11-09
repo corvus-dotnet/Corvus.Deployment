@@ -3,5 +3,5 @@ branches:
   master:
     tag: preview
     increment: patch
-next-version: "0.1"
+next-version: "0.2"
 
