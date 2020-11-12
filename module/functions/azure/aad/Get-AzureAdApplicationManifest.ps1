@@ -24,7 +24,8 @@ function Get-AzureADApplicationManifest
         [Microsoft.Azure.Commands.ActiveDirectory.PSADApplication] $App
     )
 
-    $response = Invoke-WebRequest -Uri (Get-AzureAdGraphApiAppUri $App) -Headers (Get-AzureAdGraphHeaders)
+    $response = Invoke-AzCliRestCommand -Uri (Get-AzureAdGraphApiAppUri $App) `
+                                        -Headers @{ "content-type" = "application/json" }
     $manifest = ConvertFrom-Json $response.Content
 
     return $manifest

@@ -60,14 +60,14 @@ function Assert-RequiredResourceAccessContains
         $graphApiAppUri = (Get-AzureAdGraphApiAppUri $app)
 
         $patchRequiredResourceAccess = @{requiredResourceAccess=$requiredResourceAccess}
-        $patchRequiredResourceAccessJson = ConvertTo-Json $patchRequiredResourceAccess -Depth 4
-        
-        $response = Invoke-WebRequest -Uri $graphApiAppUri `
-                                      -Method "PATCH" `
-                                      -Headers (Get-AzureAdGraphHeaders) `
-                                      -Body $patchRequiredResourceAccessJson
 
-        $response = Invoke-WebRequest -Uri $graphApiAppUri -Headers (Get-AzureAdGraphHeaders)
+        $response = Invoke-AzCliRestCommand -Uri $graphApiAppUri `
+                                            -Method 'PATCH' `
+                                            -Body $patchRequiredResourceAccess
+                                            -Headers @{ "content-type" = "application/json" }
+
+        $response = Invoke-AzCliRestCommand -Uri $graphApiAppUri `
+                                            -Headers @{ "content-type" = "application/json" }
 
         $appManifest = ConvertFrom-Json $Response.Content
 
