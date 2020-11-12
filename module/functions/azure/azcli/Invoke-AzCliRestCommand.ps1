@@ -33,12 +33,14 @@ function Invoke-AzCliRestCommand
         [Parameter(Mandatory=$true)]
         [string] $Uri,
         
-        [Parameter(Mandatory=$true)]
+        [Parameter()]
         [ValidateSet("DELETE", "GET", "PATCH", "POST", "PUT")]
-        [string] $Method,
+        [string] $Method = "GET",
         
+        [Parameter()]
         [hashtable] $Body,
         
+        [Parameter()]
         [hashtable] $Headers
     )
 
