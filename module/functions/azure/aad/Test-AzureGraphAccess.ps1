@@ -19,13 +19,18 @@ function Test-AzureGraphAccess
     (
     )
 
-    # perform an arbitrary AAD operation to force getting a graph api token, in case don't yet have one
-    Get-AzADApplication -ApplicationId (New-Guid).Guid -ErrorAction SilentlyContinue | Out-Null
-  
-    if ( !(Get-AzureAdGraphToken) ) {
-        return $False
+    # perform an arbitrary AAD operation to see if we have read access to the graph API
+    try {
+        Get-AzADApplication -ApplicationId (New-Guid).Guid -ErrorAction Stop
     }
-    else {
-        return $True
+    catch {
+        if ($_.Exception.Message -match "Insufficient privileges") {
+            return $False
+        }
+        else {
+            throw $_
+        }
     }
+
+    return $True
 }
