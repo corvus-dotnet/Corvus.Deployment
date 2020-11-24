@@ -120,7 +120,10 @@ jobs:
     - name: Install GitVersion
       run: |
         dotnet tool install -g GitVersion.Tool --version 5.2.4
-        echo "::add-path::/github/home/.dotnet/tools"    
+        echo "::add-path::/github/home/.dotnet/tools"
+      # temporary workaround
+      env:
+        ACTIONS_ALLOW_UNSECURE_COMMANDS: true  
     - name: Run GitVersion
       id: run_gitversion
       run: |
