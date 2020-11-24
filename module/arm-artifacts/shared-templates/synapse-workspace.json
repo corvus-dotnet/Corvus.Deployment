@@ -126,6 +126,32 @@
       },
       "resources": [
         {
+          "type": "Microsoft.Synapse/workspaces/bigDataPools",
+          "apiVersion": "2019-06-01-preview",
+          "name": "[concat(parameters('workspaceName'), '/SmallSparkPool')]",
+          "location": "northeurope",
+          "dependsOn": [
+              "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
+          ],
+          "properties": {
+            "sparkVersion": "2.4",
+            "nodeCount": 3,
+            "nodeSize": "Small",
+            "nodeSizeFamily": "MemoryOptimized",
+            "autoScale": {
+              "enabled": false,
+              "minNodeCount": 0,
+              "maxNodeCount": 0
+            },
+            "autoPause": {
+              "enabled": true,
+              "delayInMinutes": 15
+            },
+            "isComputeIsolationEnabled": false,
+            "sessionLevelPackagesEnabled": false,
+          }
+        },
+        {
           "condition": "[parameters('allowAllConnections')]",
           "apiVersion": "2019-06-01-preview",
           "dependsOn": [
