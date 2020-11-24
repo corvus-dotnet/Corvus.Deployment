@@ -33,7 +33,14 @@ Hashtable
 function Merge-Hashtables
 {
     $output = @{}
-    foreach ($hashtable in ($Input + $args)) {
+
+    # process input
+    [hashtable[]] $hashtables = @()
+    if ($Input) { $hashtables += $Input }
+    foreach ($h in $args) { $hashtables += $h }
+
+    # perform merge
+    foreach ($hashtable in $hashtables) {
         if ($hashtable -is [Hashtable]) {
             foreach ($key in $hashtable.Keys) {
                 $output.$key = $hashtable.$key
