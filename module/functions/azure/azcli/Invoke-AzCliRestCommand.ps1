@@ -43,7 +43,7 @@ function Invoke-AzCliRestCommand
         [hashtable] $Body,
         
         [Parameter()]
-        [hashtable] $Headers
+        [hashtable] $Headers = @{}
     )
 
     # Ensure we always have the 'Content-Type' header
