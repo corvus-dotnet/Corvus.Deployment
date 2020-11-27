@@ -95,7 +95,7 @@
     },
     "defaultSparkPoolName": {
       "type": "string",
-      "defaultValue": "false"
+      "defaultValue": ""
     },
     "defaultSparkPoolVersion": {
       "type": "string",
@@ -180,7 +180,7 @@
       "resources": [
         {
           "type": "bigDataPools",
-          "condition": "[not(equals(parameters('defaultSparkPoolName'), 'false'))]",
+          "condition": "[not(equals(parameters('defaultSparkPoolName'), ''))]",
           "apiVersion": "2019-06-01-preview",
           "name": "[parameters('defaultSparkPoolName')]",
           "location": "[parameters('location')]",
