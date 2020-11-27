@@ -92,6 +92,59 @@
     "setSbdcRbacOnStorageAccount": {
       "type": "bool",
       "defaultValue": false
+    },
+    "defaultSparkPoolName": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "defaultSparkPoolVersion": {
+      "type": "string",
+      "defaultValue": "2.4"
+    },
+    "defaultSparkPoolNodeSize": {
+      "type": "string",
+      "allowedValues": [
+				"Large",
+				"Medium",
+        "None",
+        "Small",
+        "XLarge",
+        "XXLarge",
+        "XXXLarge"
+			],
+      "defaultValue": "Small"
+    },
+    "defaultSparkPoolNodeSizeFamily": {
+      "type": "string",
+      "allowedValues": [
+				"MemoryOptimized",
+				"None"
+			],
+      "defaultValue": "MemoryOptimized"
+    },
+    "defaultSparkPoolNodeCount": {
+      "type": "int",
+      "defaultValue": 3
+    },
+    "defaultSparkPoolAutoScaleEnabled": {
+      "type": "bool",
+      "defaultValue": false
+    },
+    "defaultSparkPoolAutoScaleMinNodes": {
+      "type": "int",
+      "defaultValue": 0
+    },
+    "defaultSparkPoolAutoScaleMaxNodes": {
+      "type": "int",
+      "defaultValue": 0
+    },
+    "defaultSparkPoolAutoPauseEnabled": {
+      "type": "bool",
+      "defaultValue": true
+    },
+    "defaultSparkPoolAutoPauseDelayMinutes": {
+      "type": "int",
+      "defaultValue": 15
     }
   },
   "variables": {
@@ -126,6 +179,35 @@
       },
       "resources": [
         {
+          "type": "bigDataPools",
+          "condition": "[not(equals(parameters('defaultSparkPoolName'), ''))]",
+          "apiVersion": "2019-06-01-preview",
+          "name": "[parameters('defaultSparkPoolName')]",
+          "location": "[parameters('location')]",
+          "dependsOn": [
+              "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
+          ],
+          "properties": {
+            "sparkVersion": "[parameters('defaultSparkPoolVersion')]",
+            "nodeCount": "[parameters('defaultSparkPoolNodeCount')]",
+            "nodeSize": "[parameters('defaultSparkPoolNodeSize')]",
+            "nodeSizeFamily": "[parameters('defaultSparkPoolNodeSizeFamily')]",
+            "autoScale": {
+              "enabled": "[parameters('defaultSparkPoolAutoScaleEnabled')]",
+              "minNodeCount": "[parameters('defaultSparkPoolAutoScaleMinNodes')]",
+              "maxNodeCount": "[parameters('defaultSparkPoolAutoScaleMaxNodes')]"
+            },
+            "autoPause": {
+              "enabled": "[parameters('defaultSparkPoolAutoPauseEnabled')]",
+              "delayInMinutes": "[parameters('defaultSparkPoolAutoPauseDelayMinutes')]"
+            },
+            "isComputeIsolationEnabled": false,
+            "sessionLevelPackagesEnabled": false
+          },
+          "tags": "[parameters('tagValues')]"
+        },
+        {
+          "type": "firewallRules",
           "condition": "[parameters('allowAllConnections')]",
           "apiVersion": "2019-06-01-preview",
           "dependsOn": [
@@ -137,9 +219,10 @@
             "startIpAddress": "0.0.0.0",
             "endIpAddress": "255.255.255.255"
           },
-          "type": "firewallRules"
+          "tags": "[parameters('tagValues')]"
         },
         {
+          "type": "managedIdentitySqlControlSettings",
           "apiVersion": "2019-06-01-preview",
           "dependsOn": [
             "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
@@ -151,7 +234,7 @@
               "desiredState": "[parameters('grantWorkspaceIdentityControlForSql')]"
             }
           },
-          "type": "managedIdentitySqlControlSettings"
+          "tags": "[parameters('tagValues')]"
         },
         {
           "type": "administrators",
@@ -166,14 +249,15 @@
           },
           "dependsOn": [
               "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
-          ]
+          ],
+          "tags": "[parameters('tagValues')]"
         }
       ],
       "dependsOn": [
         "[variables('defaultDataLakeStorageDeployName')]",
         "[concat('Microsoft.Resources/deployments/', parameters('defaultDataLakeStorageFilesystemName'))]"
       ],
-      "tags": "[parameters('tagValues')]"
+      "tags": "[variables('tags')]"
     },
     {
       "condition": "[parameters('setWorkspaceIdentityRbacOnStorageAccount')]",

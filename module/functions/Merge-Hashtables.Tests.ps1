@@ -36,4 +36,20 @@ Describe 'Merge-Hashtable tests' {
             $res['Foo'] | Should -Be 'notfoo'
         }
     }
+
+    Context 'Merging without pipeline input' {
+        It 'Returns a merged hashtable' {
+            $res = Merge-HashTables $h1 $h2 $h3
+            $res.Keys.Count | Should -Be 3
+            $res['Foo'] | Should -Be 'notfoo'
+        }
+    }
+
+    Context 'Merging without pipeline input with array arg' {
+        It 'Returns a merged hashtable' {
+            $res = Merge-HashTables @($h1,$h2,$h3)
+            $res.Keys.Count | Should -Be 3
+            $res['Foo'] | Should -Be 'notfoo'
+        }
+    }
 }
