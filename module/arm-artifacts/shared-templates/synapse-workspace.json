@@ -129,7 +129,7 @@
           "type": "Microsoft.Synapse/workspaces/bigDataPools",
           "apiVersion": "2019-06-01-preview",
           "name": "[concat(parameters('workspaceName'), '/SmallSparkPool')]",
-          "location": "northeurope",
+          "location": "[parameters('location')]",
           "dependsOn": [
               "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
           ],
