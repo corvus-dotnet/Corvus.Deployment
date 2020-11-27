@@ -39,12 +39,21 @@ function Invoke-AzCli
     Write-Verbose "azcli cmd: $cmd"
     
     $ErrorActionPreference = 'Continue'     # azure-cli can sometimes write warnings to STDERR, which PowerShell treats as an error
-    $res = Invoke-Expression $cmd
+    $azCliStdErr = $null
+    $res = Invoke-Expression $cmd -ErrorVariable azCliStdErr
     
+    $diagnosticInfo = @"
+StdOut:
+$res
+StdErr:
+$azCliStdErr
+"@
     $ErrorActionPreference = 'Stop'
     if ($expectedExitCodes -inotcontains $LASTEXITCODE) {
-        Write-Error "azure-cli failed with exit code: $LASTEXITCODE"
+        Write-Error "azure-cli failed with exit code: $LASTEXITCODE`nDiagnostic information follows:`nCommand: $cmd`n$diagnosticInfo"
     }
+
+    Write-Verbose $diagnosticInfo
 
     if ($asJson) {
         return ($res | ConvertFrom-Json -Depth 30 -AsHashtable)
