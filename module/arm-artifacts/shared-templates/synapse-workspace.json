@@ -103,11 +103,24 @@
     },
     "defaultSparkPoolNodeSize": {
       "type": "string",
+      "allowedValues": [
+				"Large",
+				"Medium",
+        "None",
+        "Small",
+        "XLarge",
+        "XXLarge",
+        "XXXLarge"
+			],
       "defaultValue": "Small"
     },
     "defaultSparkPoolNodeSizeFamily": {
       "type": "string",
-      "defaultValue": "Small"
+      "allowedValues": [
+				"MemoryOptimized",
+				"None"
+			],
+      "defaultValue": "MemoryOptimized"
     },
     "defaultSparkPoolNodeCount": {
       "type": "int",
@@ -166,10 +179,10 @@
       },
       "resources": [
         {
-          "type": "Microsoft.Synapse/workspaces/bigDataPools",
+          "type": "bigDataPools",
           "condition": "[not(equals(parameters('defaultSparkPoolName'), 'false'))]",
           "apiVersion": "2019-06-01-preview",
-          "name": "[concat(parameters('workspaceName'), '/', parameters('defaultSparkPoolName'))]",
+          "name": "[parameters('defaultSparkPoolName')]",
           "location": "[parameters('location')]",
           "dependsOn": [
               "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
@@ -190,9 +203,11 @@
             },
             "isComputeIsolationEnabled": false,
             "sessionLevelPackagesEnabled": false
-          }
+          },
+          "tags": "[parameters('tagValues')]"
         },
         {
+          "type": "firewallRules",
           "condition": "[parameters('allowAllConnections')]",
           "apiVersion": "2019-06-01-preview",
           "dependsOn": [
@@ -204,9 +219,10 @@
             "startIpAddress": "0.0.0.0",
             "endIpAddress": "255.255.255.255"
           },
-          "type": "firewallRules"
+          "tags": "[parameters('tagValues')]"
         },
         {
+          "type": "managedIdentitySqlControlSettings",
           "apiVersion": "2019-06-01-preview",
           "dependsOn": [
             "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
@@ -218,7 +234,7 @@
               "desiredState": "[parameters('grantWorkspaceIdentityControlForSql')]"
             }
           },
-          "type": "managedIdentitySqlControlSettings"
+          "tags": "[parameters('tagValues')]"
         },
         {
           "type": "administrators",
@@ -233,14 +249,15 @@
           },
           "dependsOn": [
               "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
-          ]
+          ],
+          "tags": "[parameters('tagValues')]"
         }
       ],
       "dependsOn": [
         "[variables('defaultDataLakeStorageDeployName')]",
         "[concat('Microsoft.Resources/deployments/', parameters('defaultDataLakeStorageFilesystemName'))]"
       ],
-      "tags": "[parameters('tagValues')]"
+      "tags": "[variables('tags')]"
     },
     {
       "condition": "[parameters('setWorkspaceIdentityRbacOnStorageAccount')]",
