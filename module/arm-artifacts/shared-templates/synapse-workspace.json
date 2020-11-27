@@ -92,6 +92,46 @@
     "setSbdcRbacOnStorageAccount": {
       "type": "bool",
       "defaultValue": false
+    },
+    "defaultSparkPoolName": {
+      "type": "string",
+      "defaultValue": "false"
+    },
+    "defaultSparkPoolVersion": {
+      "type": "string",
+      "defaultValue": "2.4"
+    },
+    "defaultSparkPoolNodeSize": {
+      "type": "string",
+      "defaultValue": "Small"
+    },
+    "defaultSparkPoolNodeSizeFamily": {
+      "type": "string",
+      "defaultValue": "Small"
+    },
+    "defaultSparkPoolNodeCount": {
+      "type": "int",
+      "defaultValue": 3
+    },
+    "defaultSparkPoolAutoScaleEnabled": {
+      "type": "bool",
+      "defaultValue": false
+    },
+    "defaultSparkPoolAutoScaleMinNodes": {
+      "type": "int",
+      "defaultValue": 0
+    },
+    "defaultSparkPoolAutoScaleMaxNodes": {
+      "type": "int",
+      "defaultValue": 0
+    },
+    "defaultSparkPoolAutoPauseEnabled": {
+      "type": "bool",
+      "defaultValue": true
+    },
+    "defaultSparkPoolAutoPauseDelayMinutes": {
+      "type": "int",
+      "defaultValue": 15
     }
   },
   "variables": {
@@ -127,28 +167,29 @@
       "resources": [
         {
           "type": "Microsoft.Synapse/workspaces/bigDataPools",
+          "condition": "[not(equals(parameters('defaultSparkPoolName'), 'false'))]",
           "apiVersion": "2019-06-01-preview",
-          "name": "[concat(parameters('workspaceName'), '/SmallSparkPool')]",
+          "name": "[concat(parameters('workspaceName'), '/', parameters('defaultSparkPoolName'))]",
           "location": "[parameters('location')]",
           "dependsOn": [
               "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
           ],
           "properties": {
-            "sparkVersion": "2.4",
-            "nodeCount": 3,
-            "nodeSize": "Small",
-            "nodeSizeFamily": "MemoryOptimized",
+            "sparkVersion": "[parameters('defaultSparkPoolVersion')]",
+            "nodeCount": "[parameters('defaultSparkPoolNodeCount')]",
+            "nodeSize": "[parameters('defaultSparkPoolNodeSize')]",
+            "nodeSizeFamily": "[parameters('defaultSparkPoolNodeSizeFamily')]",
             "autoScale": {
-              "enabled": false,
-              "minNodeCount": 0,
-              "maxNodeCount": 0
+              "enabled": "[parameters('defaultSparkPoolAutoScaleEnabled')]",
+              "minNodeCount": "[parameters('defaultSparkPoolAutoScaleMinNodes')]",
+              "maxNodeCount": "[parameters('defaultSparkPoolAutoScaleMaxNodes')]"
             },
             "autoPause": {
-              "enabled": true,
-              "delayInMinutes": 15
+              "enabled": "[parameters('defaultSparkPoolAutoPauseEnabled')]",
+              "delayInMinutes": "[parameters('defaultSparkPoolAutoPauseDelayMinutes')]"
             },
             "isComputeIsolationEnabled": false,
-            "sessionLevelPackagesEnabled": false,
+            "sessionLevelPackagesEnabled": false
           }
         },
         {
