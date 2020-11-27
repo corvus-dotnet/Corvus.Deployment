@@ -19,7 +19,9 @@ The REST method of the request to be invoked.
 The body of the request to be invoked.
 
 .PARAMETER Headers
-The HTTP headers required by the request to be invoked.
+The HTTP headers required by the request to be invoked.  The "Content-Type" header will be automatically added if missing:
+
+@{ "Content-Type" = "application/json" }
 
 .OUTPUTS
 The JSON output from the underlying azure-cli command, in hashtable format.
@@ -43,6 +45,11 @@ function Invoke-AzCliRestCommand
         [Parameter()]
         [hashtable] $Headers
     )
+
+    # Ensure we always have the 'Content-Type' header
+    if ( !$Headers.ContainsKey("Content-Type") ) {
+        $Headers += @{ "Content-Type" = "application/json" }
+    }
 
     if (@("GET", "DELETE") -contains $Method) {
         $uriEscaped = $Uri.Replace("'", "''")

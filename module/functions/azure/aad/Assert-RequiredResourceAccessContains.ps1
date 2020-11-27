@@ -64,10 +64,8 @@ function Assert-RequiredResourceAccessContains
         $response = Invoke-AzCliRestCommand -Uri $graphApiAppUri `
                                             -Method 'PATCH' `
                                             -Body $patchRequiredResourceAccess
-                                            -Headers @{ "content-type" = "application/json" }
 
-        $appManifest = Invoke-AzCliRestCommand -Uri $graphApiAppUri `
-                                               -Headers @{ "content-type" = "application/json" }
+        $appManifest = Invoke-AzCliRestCommand -Uri $graphApiAppUri
 
         return $appManifest
     }
