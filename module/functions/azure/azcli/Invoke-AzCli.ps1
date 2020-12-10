@@ -47,13 +47,14 @@ function Invoke-AzCli
     
     $diagnosticInfo = @"
 StdOut:
-$res
+$($res -join "`n")
 StdErr:
-$azCliStdErr
+$($azCliStdErr -join "`n")
 "@
     $ErrorActionPreference = 'Stop'
     if ($expectedExitCodes -inotcontains $LASTEXITCODE) {
-        Write-Error "azure-cli failed with exit code: $LASTEXITCODE`nDiagnostic information follows:`nCommand: $cmd`n$diagnosticInfo"
+        Write-Warning "azure-cli error diagnostic information:`nCommand: $cmd`n$diagnosticInfo"
+        Write-Error "azure-cli failed with exit code: $LASTEXITCODE - check previous logs for more details"
     }
 
     Write-Verbose $diagnosticInfo
