@@ -155,6 +155,7 @@
     "synapseManagedIdentityRoleAssignmentId": "[guid(concat(resourceGroup().id, '/', variables('storageBlobDataContributorRoleID'), '/', parameters('workspaceName'), '/', 'synapse-managed-identity'))]",
 		"datalakeContributorRoleAssignmentId": "[guid(concat(resourceGroup().id, '/', variables('storageBlobDataContributorRoleID'), '/', parameters('datalakeContributorGroupId'), '/', 'datalake-contributor-group'))]",
     "defaultDataLakeStorageResourceReaderRoleAssignmentId": "[guid(concat(resourceGroup().id, '/', variables('readerRoleID'), '/', parameters('datalakeContributorGroupId'), '/', 'datalake-contributor-group'))]",
+    "defaultSparkPoolNameSafe": "[if(equals(parameters('defaultSparkPoolName'),''), 'not-required', parameters('defaultSparkPoolName'))]",
     "localTags": {
       "displayName": "[parameters('workspaceName')]"
     },
@@ -182,7 +183,7 @@
           "type": "bigDataPools",
           "condition": "[not(equals(parameters('defaultSparkPoolName'), ''))]",
           "apiVersion": "2019-06-01-preview",
-          "name": "[parameters('defaultSparkPoolName')]",
+          "name": "[variables('defaultSparkPoolNameSafe')]",
           "location": "[parameters('location')]",
           "dependsOn": [
               "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
