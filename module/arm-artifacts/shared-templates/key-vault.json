@@ -52,11 +52,18 @@
       "metadata": {
         "description": "Flag indicating whether diagnostics are enabled or not"
       }
+    },
+    "tagValues": {
+      "type": "object",
+      "defaultValue": {}
     }
   },
   "variables": {
     "defaultApiVersion": "2015-06-15",
-    "location": "[resourceGroup().location]"
+    "location": "[resourceGroup().location]",
+    "keyVaultLocalTags": {
+      "displayName": "KeyVault"
+    }
   },
   "resources": [
     {
@@ -64,9 +71,7 @@
       "name": "[parameters('keyVaultName')]",
       "apiVersion": "2015-06-01",
       "location": "[resourceGroup().location]",
-      "tags": {
-        "displayName": "KeyVault"
-      },
+      "tags": "[union(parameters('tagValues'), variables('keyVaultLocalTags'))]",
       "properties": {
         "tenantId": "[parameters('tenantId')]",
         "accessPolicies": "[parameters('accessPolicies')]",
