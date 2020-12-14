@@ -80,15 +80,15 @@
       "type": "bool"
     },
     "datalakeContributorGroupId": {
-			"type": "string",
-			"defaultValue": ""
-		},
+      "type": "string",
+      "defaultValue": ""
+    },
     "sqlAdministratorPrincipalName": {
-			"type": "string"
-		},
+      "type": "string"
+    },
     "sqlAdministratorPrincipalId": {
-			"type": "string"
-		},
+      "type": "string"
+    },
     "setSbdcRbacOnStorageAccount": {
       "type": "bool",
       "defaultValue": false
@@ -104,22 +104,22 @@
     "defaultSparkPoolNodeSize": {
       "type": "string",
       "allowedValues": [
-				"Large",
-				"Medium",
+        "Large",
+        "Medium",
         "None",
         "Small",
         "XLarge",
         "XXLarge",
         "XXXLarge"
-			],
+      ],
       "defaultValue": "Small"
     },
     "defaultSparkPoolNodeSizeFamily": {
       "type": "string",
       "allowedValues": [
-				"MemoryOptimized",
-				"None"
-			],
+        "MemoryOptimized",
+        "None"
+      ],
       "defaultValue": "MemoryOptimized"
     },
     "defaultSparkPoolNodeCount": {
@@ -153,7 +153,7 @@
     "defaultDataLakeStorageAccountUrl": "[concat('https://', parameters('defaultDataLakeStorageAccountName'), '.dfs.core.windows.net')]",
     "defaultDataLakeStorageDeployName": "[concat(deployment().name, '-defsa')]",
     "synapseManagedIdentityRoleAssignmentId": "[guid(concat(resourceGroup().id, '/', variables('storageBlobDataContributorRoleID'), '/', parameters('workspaceName'), '/', 'synapse-managed-identity'))]",
-		"datalakeContributorRoleAssignmentId": "[guid(concat(resourceGroup().id, '/', variables('storageBlobDataContributorRoleID'), '/', parameters('datalakeContributorGroupId'), '/', 'datalake-contributor-group'))]",
+    "datalakeContributorRoleAssignmentId": "[guid(concat(resourceGroup().id, '/', variables('storageBlobDataContributorRoleID'), '/', parameters('datalakeContributorGroupId'), '/', 'datalake-contributor-group'))]",
     "defaultDataLakeStorageResourceReaderRoleAssignmentId": "[guid(concat(resourceGroup().id, '/', variables('readerRoleID'), '/', parameters('datalakeContributorGroupId'), '/', 'datalake-contributor-group'))]",
     "defaultSparkPoolNameSafe": "[if(equals(parameters('defaultSparkPoolName'),''), 'not-required', parameters('defaultSparkPoolName'))]",
     "localTags": {
@@ -186,7 +186,7 @@
           "name": "[variables('defaultSparkPoolNameSafe')]",
           "location": "[parameters('location')]",
           "dependsOn": [
-              "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
+            "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
           ],
           "properties": {
             "sparkVersion": "[parameters('defaultSparkPoolVersion')]",
@@ -243,13 +243,13 @@
           "apiVersion": "2019-06-01-preview",
           "location": "[parameters('location')]",
           "properties": {
-              "administratorType": "ActiveDirectory",
-              "login": "[parameters('sqlAdministratorPrincipalName')]",
-              "sid": "[parameters('sqlAdministratorPrincipalId')]",
-              "tenantId": "[subscription().tenantId]"
+            "administratorType": "ActiveDirectory",
+            "login": "[parameters('sqlAdministratorPrincipalName')]",
+            "sid": "[parameters('sqlAdministratorPrincipalId')]",
+            "tenantId": "[subscription().tenantId]"
           },
           "dependsOn": [
-              "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
+            "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
           ],
           "tags": "[parameters('tagValues')]"
         }
@@ -382,6 +382,10 @@
     "synapseManagedIdentity": {
       "type": "string",
       "value": "[reference(concat('Microsoft.Synapse/workspaces/', parameters('workspaceName')), '2019-06-01-preview', 'Full').identity.principalId]"
+    },
+    "defaultDatalakeAccessKey": {
+      "type": "string",
+      "value": "[reference(variables('defaultDataLakeStorageDeployName')).outputs.storageAccountKey.value]"
     }
   }
 }
