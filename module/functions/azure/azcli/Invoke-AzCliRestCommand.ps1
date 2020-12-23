@@ -23,6 +23,11 @@ The HTTP headers required by the request to be invoked.  The "Content-Type" head
 
 @{ "Content-Type" = "application/json" }
 
+.PARAMETER ResourceForAuth
+Resource url for which CLI should acquire a token from AAD in order to access the service. The token will be placed in
+the Authorization header. By default, CLI can figure this out based on --url argument, unless you use ones not in the
+list of "az cloud show --query endpoints"
+
 .OUTPUTS
 The JSON output from the underlying azure-cli command, in hashtable format.
 
@@ -43,7 +48,10 @@ function Invoke-AzCliRestCommand
         [hashtable] $Body,
         
         [Parameter()]
-        [hashtable] $Headers = @{}
+        [hashtable] $Headers = @{},
+
+        [Parameter()]
+        [string] $ResourceForAuth
     )
 
     # Ensure we always have the 'Content-Type' header
@@ -51,19 +59,29 @@ function Invoke-AzCliRestCommand
         $Headers += @{ "Content-Type" = "application/json" }
     }
 
-    if (@("GET", "DELETE") -contains $Method) {
-        $uriEscaped = $Uri.Replace("'", "''")
+    # perform any query string escaping
+    $uriEscaped = $Uri.Replace("'", "''")
 
-        $response = Invoke-AzCli -Command "rest --uri '$uriEscaped' --method '$Method'" -AsJson
+    # start building up the 'az rest' command-line
+    $cmdParts = @(
+        "rest"
+        "--uri '$uriEscaped'"
+        "--method $Method"
+    )
 
-        return $response
+    if ($ResourceForAuth) {
+        $cmdParts += "--resource $ResourceForAuth"
     }
-    else {
+
+    # Additional arguments for methods with body semantics
+    if (@("PUT", "POST", "PATCH") -contains $Method) {
         $bodyAsEscapedJsonString = (ConvertTo-Json $Body -Depth 30 -Compress).replace('"', '\"').replace(':\', ': \').replace("'", "''")
         $headersAsEscapedJsonString = (ConvertTo-Json $Headers -Compress).replace('"', '\"').replace(':\', ': \').replace("'", "''")
 
-        $response = Invoke-AzCli -Command "rest --uri '$Uri' --method '$Method' --body '$bodyAsEscapedJsonString' --headers '$headersAsEscapedJsonString'" -AsJson
-
-        return $response
+        $cmdParts += "--body '$bodyAsEscapedJsonString'"
+        $cmdParts += "--headers '$headersAsEscapedJsonString'"
     }
+
+    $response = Invoke-AzCli -Command ($cmdParts -join " ") -AsJson
+    return $response
 }
