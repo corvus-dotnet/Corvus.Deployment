@@ -82,7 +82,7 @@ function Invoke-ArmTemplateDeployment
     # For single ARM template scenarios, ignore the staging functionality
     if (!$NoArtifacts) {
         if (!$StagingStorageAccountName) {
-            $StagingStorageAccountName = ('stage{0}{1}' -f $Location, ($script:AzContext.Subscription.Id).Replace('-', '').ToLowerInvariant()).SubString(0, 24)
+            $StagingStorageAccountName = ('stage{0}{1}' -f $Location, ((Get-AzContext).Subscription.Id).Replace('-', '').ToLowerInvariant()).SubString(0, 24)
         }
         $StorageContainerName = $ResourceGroupName.ToLowerInvariant().Replace(".", "") + '-stageartifacts'
 

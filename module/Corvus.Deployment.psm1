@@ -10,18 +10,19 @@ Contains a collection of useful utilities, templates and conventions for Azure d
 Contains a collection of useful utilities, templates and conventions for Azure deployment automation.
 
 .PARAMETER SubscriptionId
-The Azure Subscription that will be used for any Azure operations.
+The Azure Subscription that is the default target for any Azure operations.
 
 .PARAMETER SubscriptionId
 The Azure Tenant that the Subscription belongs to.
 #>
 
+[CmdletBinding()]
 param
 (
-	[Parameter(Mandatory=$true)]
+	[Parameter(Position=0)]
 	$SubscriptionId,
 
-	[Parameter(Mandatory=$true)]
+	[Parameter(Position=1)]
 	$AadTenantId
 )
 
@@ -46,26 +47,26 @@ Export-ModuleMember -function ( $functions |
 									Where-Object { -not $_.StartsWith("_") }
 							)
 
-
 # ensure PowerShell Az modules are available
 $azAvailable = Get-Module Az -ListAvailable
 if ($null -eq $azAvailable) {
 	Write-Error "Az PowerShell modules are not installed - they can be installed using 'Install-Module Az -AllowClobber -Force'"
 }
 
-# Ensure PowerShell Az is logged-in
-if ($null -eq (Get-AzContext) -and [Environment]::UserInteractive) {
-	Connect-AzAccount -Subscription $SubscriptionId -Tenant $AadTenantId
+# Validate the Azure connection details only if the details have been specified 
+if ($SubscriptionId -and $AadTenantId) {
+	Write-Host "Validating Az PowerShell connection"
+	# Ensure PowerShell Az is connected with the details that have been provided
+	$azContext = Get-AzContext
+	Write-Host "SubscriptionId: Specified [$SubscriptionId], Actual [$($azContext.Subscription.Id)]"
+	Write-Host "TenantId      : Specified [$AadTenantId], Actual [$($azContext.Tenant.Id)]"
+	if ($azContext.Subscription.Id -ne $SubscriptionId -or $azContext.Tenant.Id -ne $AadTenantId) {
+		Write-Error "The current Az PowerShell connection context does not match the details provided when importing this module"
+	}
 }
-elseif ($null -eq (Get-AzContext)) {
-	Write-Error "When running non-interactively the process must already be logged-in to the Az PowerShell modules"
+else {
+	Write-Host "The current Az PowerShell connection details have not been validated"
 }
-
-# Ensure we're connected to the correct subscription
-Set-AzContext -SubscriptionId $SubscriptionId -TenantId $AadTenantId | Out-Null
-
 
 # define some useful globals / constants
-$script:AzContext = Get-AzContext
-$script:AadTenantId = $AadTenantId
 $script:AadGraphApiResourceId = "https://graph.windows.net/"

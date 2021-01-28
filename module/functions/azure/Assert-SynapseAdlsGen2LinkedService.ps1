@@ -81,7 +81,7 @@ function Assert-SynapseAdlsGen2LinkedService
 
     $token = Get-MsalToken -ClientId $ClientId `
                            -ClientSecret $ClientSecret `
-                           -TenantId $script:AadTenantId `
+                           -TenantId (Get-AzContext).Tenant.Id `
                            -Scopes https://dev.azuresynapse.net/.default
     
     $headers = @{
