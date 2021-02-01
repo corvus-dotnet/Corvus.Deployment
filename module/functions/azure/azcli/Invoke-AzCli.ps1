@@ -27,23 +27,24 @@ function Invoke-AzCli
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [string] $Command,
+        $Command,
         
         [switch] $AsJson,
         
         [array] $ExpectedExitCodes = @(0)
     )
 
-    $cmd = "az $command"
+    # If passed an array of command arguments, concatenate them into single comnmand-line string
+    if ($Command -is [array]) { $Command = ($Command -join " ") }
+
+    $cmd = "az $Command"
     if ($asJson) { $cmd = "$cmd -o json" }
     Write-Verbose "azcli cmd: $cmd"
-    
+
     $ErrorActionPreference = 'Continue'     # azure-cli can sometimes write warnings to STDERR, which PowerShell treats as an error
-    
-    # Capture any error messages so they can be properly logged
-    # NOTE: '-ErrorVariable' on Invoke-Expression seems only to work properly if the command-line contains some STDERR redirection,
-    #       otherwise the error variable is always null.
-    $res = Invoke-Expression "$cmd 2>''" -ErrorVariable azCliStdErr
+
+    # Execute the azure-cli and capture the results and any StdErr output
+    $res,$azCliStdErr = _invokeAzCli $cmd
     
     $diagnosticInfo = @"
 StdOut:
@@ -62,4 +63,23 @@ $($azCliStdErr -join "`n")
     if ($asJson) {
         return ($res | ConvertFrom-Json -Depth 30 -AsHashtable)
     }
+
+    return $res,$azCliStdErr
+}
+
+# Extract function for mocking purposes
+function _invokeAzCli
+{
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)]
+        [string] $CommandLine
+    )
+
+    # Capture any error messages so they can be properly logged
+    # NOTE: '-ErrorVariable' on Invoke-Expression seems only to work properly if the command-line contains some STDERR redirection,
+    #       otherwise the error variable is always null.
+    $output = Invoke-Expression "$CommandLine 2>''" -ErrorVariable stdErr
+
+    return $output,$stdErr
 }
