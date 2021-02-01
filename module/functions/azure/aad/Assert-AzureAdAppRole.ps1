@@ -27,6 +27,9 @@ The value for the application role.
 .PARAMETER AllowedMemberTypes
 Allowed member types for the application (User / Application)
 
+.PARAMETER UseAzureAdGraph
+By default, the Microsoft Graph will be used for the graph operations. If you enable this switch, the legacy Azure AD Graph will be used instead.
+
 .OUTPUTS
 Microsoft.Azure.Commands.ActiveDirectory.PSADApplication
 #>
@@ -40,10 +43,18 @@ function Assert-AzureAdAppRole
         [string] $DisplayName,
         [string] $Description,
         [string] $Value,
-        [string[]] $AllowedMemberTypes
+        [string[]] $AllowedMemberTypes,
+        [switch] $UseAzureAdGraph
     )
     
-    $GraphApiAppUri = ("https://graph.microsoft.com/v1.0/applications/{0}" -f $AppObjectId)
+    $TenantId = (Get-AzContext).Tenant.Id
+
+    $AppUriSegment = ("applications/{0}" -f $AppObjectId)
+
+    $GraphApiAppUri = $UseAzureAdGraph ?
+        "https://graph.windows.net/{0}/{1}?api-version=1.5" -f $TenantId, $AppUriSegment : 
+        "https://graph.microsoft.com/v1.0/{0}" -f $AppUriSegment
+
 
     $App = Invoke-AzCliRestCommand -Uri $GraphApiAppUri
 
