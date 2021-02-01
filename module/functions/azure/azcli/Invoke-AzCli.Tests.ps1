@@ -34,19 +34,19 @@ Describe "Invoke-AzCli" {
 
         It "should throw an exception when the command fails" {
 
-            { $output,$stdErr = Invoke-AzCli -Command $cmd 3>$null } | should -Throw
+            { $output,$stdErr = Invoke-AzCli -Command $cmd 3>$null } | Should -Throw
         }
 
         It "should return error messages written to StdOut and fail" {
             $output,$stdErr = Invoke-AzCli -Command $cmd -ExpectedExitCodes @(2) 3>$null
 
-            $output | Select-Object -First 1 | should -be "CommandNotFoundError: 'foo' is misspelled or not recognized by the system."
+            $output | Select-Object -First 1 | Should -Match "CommandNotFoundError: 'foo' is misspelled or not recognized by the system."
         }
 
         It "should write diagnostic information to the Warning stream" {
             { $output,$stdErr = Invoke-AzCli -Command $cmd 3>$here/warn-stream.log } | should -Throw
             try {
-                Get-Content $here/warn-stream.log | Select-Object -First 1 | should -be "azure-cli error diagnostic information:"
+                Get-Content $here/warn-stream.log | Select-Object -First 1 | Should -Match "azure-cli error diagnostic information:"
             }
             finally {
                 Get-Item "$here/warn-stream.log" -ErrorAction SilentlyContinue | Remove-Item
