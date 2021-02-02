@@ -22,7 +22,7 @@ A hashtable representing the members of the specified group.
 #>
 function Assert-AzdoGroupMembership
 {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter()]
         [string] $Name,
@@ -49,7 +49,7 @@ function Assert-AzdoGroupMembership
     $listGroupArgs = @(
         "devops security group list"
         "--organization $orgUrl"
-        "--project $Project"
+        "--project `"$Project`""
         "--query `"graphGroups[?displayName == '$Name']`""
     )
     $existingGroup = Invoke-CorvusAzCli -Command $listGroupArgs -AsJson
@@ -68,7 +68,12 @@ function Assert-AzdoGroupMembership
             $alreadyMember = _IsAzdoGroupMember -ExistingGroupMembers $existingMembers `
                                                 -NewMemberEntry $member
             if (!$alreadyMember) {
-                _AddGroupMember
+                if ($PSCmdlet.ShouldProcess($Name)) {
+                    _AddGroupMember
+                }
+                else {
+                    Write-Host "[DRYRUN] Add member: $($member.name) [$($member.type)]" -f Magenta
+                }
                 $output.Added += $member
             }
             else {

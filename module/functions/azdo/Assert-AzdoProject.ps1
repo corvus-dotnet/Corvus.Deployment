@@ -24,7 +24,7 @@ The visibility of the project when it is created.
 #>
 function Assert-AzdoProject
 {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter()]
         [string] $Name,
@@ -41,20 +41,31 @@ function Assert-AzdoProject
 
     $orgUrl = Get-AdzoOrganisationUrl $Organisation
     
-    $existingProjects = az devops project list --organization $orgUrl `
-                                                -o json `
-                                                --query "value[?name == '$Name']" | ConvertFrom-Json -AsHashtable
+    $listProjectArgs = @(
+        "devops project list"
+        "--organization $orgUrl"
+        "--query `"value[?name == '$Name']`""
+    )
+    $existingProjects = Invoke-CorvusAzCli -Command $listProjectArgs -AsJson
 
     $existingProject = $existingProjects | Where-Object { $_.name -eq $Name }
     
     if (!$existingProject) {
         Write-Host "Creating project '$Name'"
-        $existingProject = az devops project create --name $Name `
-                                                --process $Process `
-                                                --source-control git `
-                                                --visibility $Visibility `
-                                                --organization $orgUrl `
-                                                -o json
+        $createProjectArgs = @(
+            "devops project create"
+            "--name `"$Name`""
+            "--process $Process"
+            "--source-control git"
+            "--visibility $Visibility"
+            "--organization $orgUrl"
+        )
+        if ($PSCmdlet.ShouldProcess($Name)) {
+            $existingProject = Invoke-CorvusAzCli -Command $createProjectArgs -AsJson
+        }
+        else {
+            Write-Host "[DRYRUN] Create project: $Name" -f Magenta
+        }
     }
     else {
         Write-Verbose "Project '$Name' already exists - skipping"
