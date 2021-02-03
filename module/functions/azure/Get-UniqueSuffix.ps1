@@ -1,4 +1,4 @@
-# <copyright file="Get-UniqueSuffix .ps1" company="Endjin Limited">
+# <copyright file="Get-UniqueSuffix.ps1" company="Endjin Limited">
 # Copyright (c) Endjin Limited. All rights reserved.
 # </copyright>
 
@@ -23,7 +23,8 @@ The name of the environment for the deployment.
 #>
 
 function Get-UniqueSuffix
-{ 
+{
+    [CmdletBinding()]
     param
     (
         [Parameter(Position=0)]
