@@ -45,7 +45,7 @@ function Invoke-AzCliRestCommand
         [string] $Uri,
         
         [Parameter(ParameterSetName = 'Body as hashtable')]
-        [Parameter(Mandatory = $true, ParameterSetName = 'Body as file')]
+        [Parameter(ParameterSetName = 'Body as file')]
         [ValidateSet("DELETE", "GET", "PATCH", "POST", "PUT")]
         [string] $Method = "GET",
         
