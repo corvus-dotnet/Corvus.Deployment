@@ -68,11 +68,9 @@ function Assert-AzdoGroupMembership
             $alreadyMember = _IsAzdoGroupMember -ExistingGroupMembers $existingMembers `
                                                 -NewMemberEntry $member
             if (!$alreadyMember) {
-                if ($PSCmdlet.ShouldProcess($Name)) {
-                    _AddGroupMember
-                }
-                else {
-                    Write-Host "[DRYRUN] Add member: $($member.name) [$($member.type)]" -f Magenta
+                if ( !(_AddGroupMember -WhatIf:$WhatIfPreference) ) {
+                    # When _AddGroupMember fails, stop processing this iteration and continue to the next member
+                    continue
                 }
                 $output.Added += $member
             }
