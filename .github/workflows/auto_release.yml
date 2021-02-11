@@ -124,7 +124,10 @@ jobs:
     - name: Run GitVersion
       id: run_gitversion
       run: |
-        pwsh -noprofile -c '(dotnet-gitversion | ConvertFrom-Json).psobject.properties | % { echo ("::set-output name={0}::{1}" -f $_.name, $_.value) }'
+        pwsh -noprofile -c 'dotnet-gitversion /diag'
+        pwsh -noprofile -c '(dotnet-gitversion | ConvertFrom-Json).psobject.properties | % { echo ("::set-output name=gitversion_{0}::{1}" -f $_.name, $_.value) }'
+    - run: |
+        echo "SemVer: ${{ steps.run_gitversion.outputs.gitversion_SemVer }}"
 
     - name: Generate token
       id: generate_token
