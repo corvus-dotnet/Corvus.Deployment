@@ -12,7 +12,7 @@ Contains a collection of useful utilities, templates and conventions for Azure d
 .PARAMETER SubscriptionId
 The Azure Subscription that is the default target for any Azure operations.
 
-.PARAMETER SubscriptionId
+.PARAMETER AadTenantId
 The Azure Tenant that the Subscription belongs to.
 #>
 
@@ -53,19 +53,24 @@ if ($null -eq $azAvailable) {
 	Write-Error "Az PowerShell modules are not installed - they can be installed using 'Install-Module Az -AllowClobber -Force'"
 }
 
-# Validate the Azure connection details only if the details have been specified 
-if ($SubscriptionId -and $AadTenantId) {
-	Write-Host "Validating Az PowerShell connection"
-	# Ensure PowerShell Az is connected with the details that have been provided
-	$azContext = Get-AzContext
-	Write-Host "SubscriptionId: Specified [$SubscriptionId], Actual [$($azContext.Subscription.Id)]"
-	Write-Host "TenantId      : Specified [$AadTenantId], Actual [$($azContext.Tenant.Id)]"
-	if ($azContext.Subscription.Id -ne $SubscriptionId -or $azContext.Tenant.Id -ne $AadTenantId) {
-		Write-Error "The current Az PowerShell connection context does not match the details provided when importing this module"
+# This will track whether the current session has explicitly connected to a tenant/subscription
+$script:moduleContext = @{
+	SubscriptionId = $null
+	AadTenantId = $null
+	AzPowerShell = @{
+		Connected = $false
+	}
+	AzureCli = @{
+		Connected = $false
 	}
 }
+
+# Validate the Azure connection details only if the details have been specified 
+if ($SubscriptionId -and $AadTenantId) {
+	Connect-Azure -SubscriptionId $SubscriptionId -AadTenantId $AadTenantId
+}
 else {
-	Write-Host "The current Az PowerShell connection details have not been validated"
+	Write-Host "The current Azure connection details have not been validated - use 'Connect-CorvusAzure' to get connected."
 }
 
 # define some useful globals / constants

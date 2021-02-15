@@ -31,40 +31,52 @@ function Invoke-AzCli
         
         [switch] $AsJson,
         
-        [array] $ExpectedExitCodes = @(0)
+        [array] $ExpectedExitCodes = @(0),
+
+        [switch] $SuppressConnectionValidation
     )
 
-    # If passed an array of command arguments, concatenate them into single comnmand-line string
-    if ($Command -is [array]) { $Command = ($Command -join " ") }
+    # Ensure the AzureCLI is installed and available
+    if (!(Get-Command "az")) {
+        throw "The AzureCLI could not be found. If recently installed, you may need to restart your session to update your PATH configuration."
+    }
 
-    $cmd = "az $Command"
-    if ($asJson) { $cmd = "$cmd -o json" }
-    Write-Verbose "azcli cmd: $cmd"
+    # Ensure we have a validation AzureCLI connection, unless explicitly suppressed
+    # (e.g. when this module is trying to login)
+    if ( $SuppressConnectionValidation -or (_EnsureAzureConnection -AzureCli) ) {
 
-    $ErrorActionPreference = 'Continue'     # azure-cli can sometimes write warnings to STDERR, which PowerShell treats as an error
+        # If passed an array of command arguments, concatenate them into single comnmand-line string
+        if ($Command -is [array]) { $Command = ($Command -join " ") }
 
-    # Execute the azure-cli and capture the results and any StdErr output
-    $res,$azCliStdErr = _invokeAzCli $cmd
-    
-    $diagnosticInfo = @"
+        $cmd = "az $Command"
+        if ($asJson) { $cmd = "$cmd -o json" }
+        Write-Verbose "azcli cmd: $cmd"
+
+        $ErrorActionPreference = 'Continue'     # azure-cli can sometimes write warnings to STDERR, which PowerShell treats as an error
+
+        # Execute the azure-cli and capture the results and any StdErr output
+        $res,$azCliStdErr = _invokeAzCli $cmd
+        
+        $diagnosticInfo = @"
 StdOut:
 $($res -join "`n")
 StdErr:
 $($azCliStdErr -join "`n")
 "@
-    $ErrorActionPreference = 'Stop'
-    if ($expectedExitCodes -inotcontains $LASTEXITCODE) {
-        Write-Warning "azure-cli error diagnostic information:`nCommand: $cmd`n$diagnosticInfo"
-        Write-Error "azure-cli failed with exit code: $LASTEXITCODE - check previous logs for more details"
+        $ErrorActionPreference = 'Stop'
+        if ($expectedExitCodes -inotcontains $LASTEXITCODE) {
+            Write-Warning "azure-cli error diagnostic information:`nCommand: $cmd`n$diagnosticInfo"
+            Write-Error "azure-cli failed with exit code: $LASTEXITCODE - check previous logs for more details"
+        }
+
+        Write-Verbose $diagnosticInfo
+
+        if ($asJson) {
+            return ($res | ConvertFrom-Json -Depth 30 -AsHashtable)
+        }
+
+        return $res,$azCliStdErr
     }
-
-    Write-Verbose $diagnosticInfo
-
-    if ($asJson) {
-        return ($res | ConvertFrom-Json -Depth 30 -AsHashtable)
-    }
-
-    return $res,$azCliStdErr
 }
 
 # Extract function for mocking purposes

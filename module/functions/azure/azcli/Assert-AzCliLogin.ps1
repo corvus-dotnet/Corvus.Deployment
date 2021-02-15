@@ -47,7 +47,7 @@ function Assert-AzCliLogin {
         }
         # Azure pipeline processes seem to report themselves as interactive - at least on linux agents
         elseif ( [Environment]::UserInteractive -and !(Test-Path env:\SYSTEM_TEAMFOUNDATIONSERVERURI) ) {
-            Invoke-AzCli -Command "login --tenant $AadTenantId"
+            Invoke-AzCli -Command "login --tenant $AadTenantId" -SuppressConnectionValidation
             if ($LASTEXITCODE -ne 0) {
                 Write-Error "There was a problem logging into the Azure-cli - check any previous messages"
             }
@@ -57,6 +57,6 @@ function Assert-AzCliLogin {
         }
     }
 
-    Invoke-AzCli "account set --subscription $SubscriptionId"
-    return (Invoke-AzCli "account show" -asJson)
+    Invoke-AzCli "account set --subscription $SubscriptionId" -SuppressConnectionValidation
+    return (Invoke-AzCli "account show" -asJson -SuppressConnectionValidation)
 }
