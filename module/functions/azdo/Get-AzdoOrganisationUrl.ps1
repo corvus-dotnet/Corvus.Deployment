@@ -1,4 +1,4 @@
-# <copyright file="Get-AdzoOrganisationUrl.ps1" company="Endjin Limited">
+# <copyright file="Get-AzdoOrganisationUrl.ps1" company="Endjin Limited">
 # Copyright (c) Endjin Limited. All rights reserved.
 # </copyright>
 
@@ -13,7 +13,7 @@ Returns the full URL of an Azure DevOps Organisation.
 The Organisation name.
 
 #>
-function Get-AdzoOrganisationUrl
+function Get-AzdoOrganisationUrl
 {
     [CmdletBinding()]
     param (

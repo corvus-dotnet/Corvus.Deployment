@@ -39,7 +39,7 @@ function Assert-AzdoProject
         [string] $Visibility = "private"
     )
 
-    $orgUrl = Get-AdzoOrganisationUrl $Organisation
+    $orgUrl = Get-AzdoOrganisationUrl $Organisation
     
     $listProjectArgs = @(
         "devops project list"

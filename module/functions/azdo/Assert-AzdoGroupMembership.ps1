@@ -43,7 +43,7 @@ function Assert-AzdoGroupMembership
         Removed = @()
     }
 
-    $orgUrl = Get-AdzoOrganisationUrl $Organisation
+    $orgUrl = Get-AzdoOrganisationUrl $Organisation
     
     # Lookup the group
     $listGroupArgs = @(
@@ -52,7 +52,7 @@ function Assert-AzdoGroupMembership
         "--project `"$Project`""
         "--query `"graphGroups[?displayName == '$Name']`""
     )
-    $existingGroup = Invoke-CorvusAzCli -Command $listGroupArgs -AsJson
+    $existingGroup = Invoke-AzCli -Command $listGroupArgs -AsJson
 
     if ($existingGroup) {
         # Lookup the current group members
@@ -61,7 +61,7 @@ function Assert-AzdoGroupMembership
             "--organization $orgUrl"
             "--id $($existingGroup.descriptor)"
         )
-        $existingMembers = Invoke-CorvusAzCli -Command $getMemberArgs -AsJson
+        $existingMembers = Invoke-AzCli -Command $getMemberArgs -AsJson
   
         # add missing members
         foreach ($member in $RequiredMembers) {
