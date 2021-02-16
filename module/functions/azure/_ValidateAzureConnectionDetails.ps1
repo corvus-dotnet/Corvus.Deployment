@@ -31,8 +31,11 @@ function _ValidateAzureConnectionDetails
     }
 
     if ($AzureCli) {
-        # Ensure PowerShell Az is connected with the details that have been provided
-        $currentAccount = Assert-AzCliLogin -SubscriptionId $SubscriptionId -AadTenantId $AadTenantId
+        # Ensure AzureCLI is connected with the details that have been provided
+        try {
+            $currentAccount = Invoke-AzCli "account show" -asJson -SuppressConnectionValidation
+        }
+        catch {}
 
         if ($currentAccount.id -eq $SubscriptionId -and `
                 $currentAccount.tenantId -eq $AadTenantId
