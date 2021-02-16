@@ -79,9 +79,12 @@ function Assert-SynapseAdlsGen2LinkedService
         throw "Missing ClientSecret - You must provide the '-ClientSecret' parameter or set the 'AZURE_CLIENT_SECRET' environment variable"
     }
 
+    # Check whether we have a valid AzPowerShell connection
+    _EnsureAzureConnection -AzPowerShell -ErrorAction Stop
+
     $token = Get-MsalToken -ClientId $ClientId `
                            -ClientSecret $ClientSecret `
-                           -TenantId (Get-AzContext).Tenant.Id `
+                           -TenantId $script:moduleContext.AadTenantId `
                            -Scopes https://dev.azuresynapse.net/.default
     
     $headers = @{

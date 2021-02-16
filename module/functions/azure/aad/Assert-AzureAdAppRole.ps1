@@ -47,7 +47,10 @@ function Assert-AzureAdAppRole
         [switch] $UseAzureAdGraph
     )
     
-    $TenantId = (Get-AzContext).Tenant.Id
+    # Check whether we have a valid AzPowerShell connection
+    _EnsureAzureConnection -AzPowerShell -ErrorAction Stop
+
+    $TenantId = $script:moduleContext.AadTenantId
 
     $AppUriSegment = ("applications/{0}" -f $AppObjectId)
 

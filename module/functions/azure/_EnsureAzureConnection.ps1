@@ -1,3 +1,16 @@
+# <copyright file="_EnsureAzureConnection.ps1" company="Endjin Limited">
+# Copyright (c) Endjin Limited. All rights reserved.
+# </copyright>
+
+<#
+.SYNOPSIS
+Checks whether a valid Azure connection is available, as setup using 'Connect-Azure'.
+
+.DESCRIPTION
+Also validates that the existing connection is still associated with originally intended Tenant and Subscription.
+
+#>
+
 function _EnsureAzureConnection
 {
     [CmdletBinding()]

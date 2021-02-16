@@ -47,6 +47,8 @@ function Connect-Azure
         [switch] $SkipAzureCli
     )
     
+    # NOTE: This function is exempt from the test requiring consumers of AzPowerShell to call _EnsureAzureConnection
+
     $script:moduleContext.SubscriptionId = $SubscriptionId
     $script:moduleContext.AadTenantId = $AadTenantId
 

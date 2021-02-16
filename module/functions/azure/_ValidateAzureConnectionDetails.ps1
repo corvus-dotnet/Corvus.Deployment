@@ -1,3 +1,15 @@
+# <copyright file="_ValidateAzureConnectionDetails.ps1" company="Endjin Limited">
+# Copyright (c) Endjin Limited. All rights reserved.
+# </copyright>
+
+<#
+.SYNOPSIS
+Checks whether an existing Azure connection is still associated with originally intended Tenant and Subscription.
+
+.DESCRIPTION
+Checks whether an existing Azure connection is still associated with originally intended Tenant and Subscription.
+
+#>
 function _ValidateAzureConnectionDetails
 {
     [CmdletBinding()]
@@ -15,6 +27,8 @@ function _ValidateAzureConnectionDetails
         [switch] $AzureCli
     )
 
+    # NOTE: This function is exempt from the test requiring consumers of AzPowerShell to call _EnsureAzureConnection
+    
     if ($AzPowerShell) {
         # Ensure PowerShell Az is connected with the details that have been provided
         $azContext = Get-AzContext
