@@ -11,13 +11,23 @@ Synchronises the membership of an existing Azure DevOps project group to match t
 members configuration parameter.
 
 .PARAMETER Name
+The name of the group to process.
+
+.PARAMETER Project
 The name of the Azure DevOps project.
 
 .PARAMETER Organisation
 The name of the Azure DevOps organisation.
 
-.PARAMETER Members
-A hashtable representing the members of the specified group.
+.PARAMETER RequiredMembers
+An array of hashtables, each representing a required member of the specified group.
+@(
+    @{
+        name = "<member-name>"
+        type = "<member-type>"   # valid values are 'user' or 'group'
+    }
+    ...
+)
 
 #>
 function Assert-AzdoGroupMembership

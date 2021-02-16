@@ -4,16 +4,20 @@
 
 <#
 .SYNOPSIS
-Returns whether the a given identity is already a member of an Azure DevOps project group.
+Returns whether the given identity is already a member of an Azure DevOps project group.
 
 .DESCRIPTION
-Returns whether the a given identity is already a member of an Azure DevOps project group.
+Returns whether the given identity is already a member of an Azure DevOps project group.
 
 .PARAMETER ExistingGroupMembers
-tbc
+The existing membership of an Azure DevOps group as per the output from 'az devops security group membership list'
 
 .PARAMETER NewMemberEntry
-tbc
+A hashtable representing the new member to be added to the group.
+@{
+    name = "<member-name>"
+    type = "<member-type>"   # valid values are 'user' or 'group'
+}
 
 #>
 function _IsAzdoGroupMember
