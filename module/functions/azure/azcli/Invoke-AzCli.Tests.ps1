@@ -3,7 +3,12 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".Tests.ps1", ".p
 
 . "$here\$sut"
 
+# define other functions that will be mocked
+function _EnsureAzureConnection {}
+
 Describe "Invoke-AzCli" {
+
+    Mock _EnsureAzureConnection { $true }
 
     # we can't mock LASTEXITCODE, but this makes sure that any previous
     # cli tool error doesn't randomly fail our tests
@@ -30,6 +35,7 @@ Describe "Invoke-AzCli" {
     }
 
     Context "Error handling" {
+
         $cmd = "foo bar"
 
         It "should throw an exception when the command fails" {
