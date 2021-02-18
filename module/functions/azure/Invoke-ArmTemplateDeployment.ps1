@@ -79,10 +79,13 @@ function Invoke-ArmTemplateDeployment
 
     $OptionalParameters = @{}
 
+    # Check whether we have a valid AzPowerShell connection
+    _EnsureAzureConnection -AzPowerShell -ErrorAction Stop
+
     # For single ARM template scenarios, ignore the staging functionality
     if (!$NoArtifacts) {
         if (!$StagingStorageAccountName) {
-            $StagingStorageAccountName = ('stage{0}{1}' -f $Location, ($script:AzContext.Subscription.Id).Replace('-', '').ToLowerInvariant()).SubString(0, 24)
+            $StagingStorageAccountName = ('stage{0}{1}' -f $Location, ($script:moduleContext.SubscriptionId).Replace('-', '').ToLowerInvariant()).SubString(0, 24)
         }
         $StorageContainerName = $ResourceGroupName.ToLowerInvariant().Replace(".", "") + '-stageartifacts'
 

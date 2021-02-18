@@ -1,4 +1,4 @@
-# <copyright file="Asert-Module.ps1" company="Endjin Limited">
+# <copyright file="Assert-Module.ps1" company="Endjin Limited">
 # Copyright (c) Endjin Limited. All rights reserved.
 # </copyright>
 

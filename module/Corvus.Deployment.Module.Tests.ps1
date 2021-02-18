@@ -80,6 +80,19 @@ Describe "Corvus.Deployment Module Tests"  {
         $errors.Count | Should -Be 0
       }
 
+      # This test aims to highlight when functions do not enforce the use of the 'Connect-Azure' function
+      # that provides guard rails for ensuring the process is connected to the correct Azure subscription/tenant
+      It "$function must validate the Azure connection before using Az PowerShell or the AzureCLI" {
+        $functionContent = Get-Content -raw $functionPath
+        # Attempt to detect whether the function calls a Az PowerShell Cmdlet
+        # NOTE:
+        #   Regex looks for references to names following the pattern of Az PowerShell cmdlets (e.g. <verb>-Az<Noun>)
+        #   Ignoring references to our 'Invoke-AzCli' cmdlet
+        $usesAzPowerShell = $functionContent | Select-String -CaseSensitive -Pattern ".*\w-Az(?!Cli)[A-Z].*"
+        if ($usesAzPowerShell) {
+          $functionContent | Should -Match "_EnsureAzureConnection"
+        }
+      }
     }
 
     # Context "$function has tests" {

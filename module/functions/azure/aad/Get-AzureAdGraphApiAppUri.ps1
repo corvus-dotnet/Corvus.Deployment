@@ -24,7 +24,7 @@ function Get-AzureAdGraphApiAppUri
         [Microsoft.Azure.Commands.ActiveDirectory.PSADApplication] $App
     )
 
-    $graphApiAppUri = ("https://graph.windows.net/{0}/applications/{1}?api-version=1.6" -f $script:AadTenantId, $App.ObjectId)
+    $graphApiAppUri = ("https://graph.windows.net/{0}/applications/{1}?api-version=1.6" -f $script:moduleContext.AadTenantId, $App.ObjectId)
 
     return $graphApiAppUri
 }
