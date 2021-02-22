@@ -46,7 +46,7 @@ Describe "Invoke-AzCli" {
         It "should return error messages written to StdOut and fail" {
             $output,$stdErr = Invoke-AzCli -Command $cmd -ExpectedExitCodes @(2) 3>$null
 
-            $output | Select-Object -First 1 | Should -Match "CommandNotFoundError: 'foo' is misspelled or not recognized by the system."
+            $output | Select-Object -First 1 | Should -Match "'foo' is misspelled or not recognized by the system."
         }
 
         It "should write diagnostic information to the Warning stream" {

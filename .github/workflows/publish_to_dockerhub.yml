@@ -1,0 +1,63 @@
+name: publish_to_dockerhub
+on:
+- push
+- workflow_dispatch
+
+jobs:
+  run_gitversion:
+    runs-on: ubuntu-latest
+    name: Run GitVersion
+    # only trigger for pushed tags
+    if: |
+      startsWith(github.event.ref, 'refs/tags/')
+    outputs:
+      semver: ${{ steps.run_gitversion.outputs.semver }}
+      major: ${{ steps.run_gitversion.outputs.major }}
+      majorMinor: ${{ steps.run_gitversion.outputs.major }}.${{ steps.run_gitversion.outputs.minor }}
+      preReleaseTag: ${{ steps.run_gitversion.outputs.preReleaseTag }}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: '3.1.402'
+    - name: Install GitVersion
+      run: |
+        dotnet tool install -g GitVersion.Tool --version 5.6.6
+        echo "/github/home/.dotnet/tools" >> $GITHUB_PATH
+    - name: Run GitVersion
+      id: run_gitversion
+      run: |
+        pwsh -noprofile -c 'dotnet-gitversion /diag'
+        pwsh -noprofile -c '(dotnet-gitversion | ConvertFrom-Json).psobject.properties | % { echo ("::set-output name={0}::{1}" -f $_.name, $_.value) }'
+
+  publish_to_dockerhub:
+    runs-on: ubuntu-latest
+    name: Publish to Docker Hub
+    needs: run_gitversion
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Read workflow configuration
+      id: get_config
+      uses: endjin/pr-autoflow/actions/read-configuration@v1
+      with:
+        config_file: .github/config/docker.json
+
+    - name: Push to Docker Hub
+      uses: docker/build-push-action@v1
+      with:
+        username: ${{ secrets.ENDJIN_DOCKERHUB_USERNAME  }}
+        password: ${{ secrets.ENDJIN_DOCKERHUB_ACCESSTOKEN  }}
+        repository: ${{ steps.get_config.outputs.docker_repository }}
+        tags: ${{ needs.run_gitversion.outputs.semver }}
+
+    - name: Tag Docker Hub image with Major and MajorMinor tags
+      if: needs.run_gitversion.outputs.prereleaseTag == ''
+      uses: docker/build-push-action@v1
+      with:
+        username: ${{ secrets.ENDJIN_DOCKERHUB_USERNAME  }}
+        password: ${{ secrets.ENDJIN_DOCKERHUB_ACCESSTOKEN  }}
+        repository: ${{ steps.get_config.outputs.docker_repository }}
+        tags: ${{ needs.run_gitversion.outputs.major }},${{ needs.run_gitversion.outputs.majorMinor }}
