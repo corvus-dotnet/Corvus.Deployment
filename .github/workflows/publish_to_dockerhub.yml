@@ -46,7 +46,7 @@ jobs:
         config_file: .github/config/docker.json
 
     - name: Push to Docker Hub
-      uses: docker/build-push-action@v1
+      uses: docker/build-push-action@v2
       with:
         username: ${{ secrets.ENDJIN_DOCKERHUB_USERNAME  }}
         password: ${{ secrets.ENDJIN_DOCKERHUB_ACCESSTOKEN  }}
