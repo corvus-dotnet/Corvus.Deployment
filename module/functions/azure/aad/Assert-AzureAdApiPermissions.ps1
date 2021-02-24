@@ -43,70 +43,8 @@ function Assert-AzureAdApiPermissions
         [guid] $ApplicationId
     )
 
-    function _getApiId
-    {
-        [CmdletBinding()]
-        param (
-            [Parameter(Mandatory=$true)]
-            [ValidateSet("AzureGraph","MSGraph")]
-            [string] $ApiName
-        )
-
-        $apiLookup = @{
-            "AzureGraph" = "00000002-0000-0000-c000-000000000000"
-            "MSGraph" = "00000003-0000-0000-c000-000000000000"
-        }
-        
-        return $apiLookup[$ApiName]
-    }
-
-    function _getApiPermissionId
-    {
-        [CmdletBinding()]
-        param (
-            [Parameter(Mandatory=$true)]
-            [ValidateSet("AzureGraph","MSGraph")]
-            [string] $ApiName,
+    _EnsureAzureConnection
     
-            [Parameter(Mandatory=$true)]
-            [string] $Permission,
-
-            [Parameter(Mandatory=$true)]
-            [ValidateSet("Application","Delegated")]
-            [string] $Type
-        )
-
-        $apiId = _getApiId -ApiName $ApiName
-
-        if (!(Get-Variable "apiPermissionsList" -Scope Global -EA 0)) {
-            $global:apiPermissionsList = @{}
-        }
-
-        if (!($global:apiPermissionsList.ContainsKey($apiId))) {
-            $cmd = @(
-                "ad sp show"
-                "--id $apiId"
-            )
-            $apiApp = Invoke-AzCli $cmd -AsJson
-            $global:apiPermissionsList += @{ "$apiId" = $apiApp }
-        }
-
-        switch($Type)
-        {
-            "Application" { $queryMember = "appRoles" }
-            "Delegated" { $queryMember = "oauth2Permissions" }
-        }
-
-        $permissionEntry = $global:apiPermissionsList[$apiId].$queryMember | `
-                                Where-Object { $_.value -eq $Permission }
-
-        if (!$permissionEntry) {
-            throw "The $ApiName permission '$Permission' of type '$Type' could not be found - check the name and type details"
-        }
-
-        return $permissionEntry.id
-    }
-
     [hashtable[]] $accessRequirements = @()
     foreach ($permission in $ApplicationPermissions) {
         $permisssionId = _getApiPermissionId -ApiName $ApiName -Permission $permission -Type Application
