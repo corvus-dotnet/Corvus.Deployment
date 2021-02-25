@@ -47,15 +47,7 @@ jobs:
     needs: run_gitversion
     steps:
     - run: |
-        set
-
-        echo "OUTPUTS"
         echo "SemVer    : ${{ needs.run_gitversion.outputs.semver }}"
         echo "Major     : ${{ needs.run_gitversion.outputs.major }}"
         echo "MajorMinor: ${{ needs.run_gitversion.outputs.majorMinor }}"
         echo "PreReleaseTag: ${{ needs.run_gitversion.outputs.preReleaseTag }}"
-        echo "ENV"
-        echo "SemVer    : ${GitVersion.SemVer}"
-        echo "Major     : ${GitVersion.Major"
-        echo "MajorMinor: ${GitVersion.Major}.${GitVersion.Minor}"
-        echo "PreReleaseTag: ${GitVersion.PreReleaseTag}"
