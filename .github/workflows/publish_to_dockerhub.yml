@@ -38,7 +38,7 @@ jobs:
     name: Publish to Docker Hub
     needs: run_gitversion
     steps:
-
+    - uses: actions/checkout@v2
     - name: GitVersion Debug
       run: |
         echo "SemVer    : ${{ needs.run_gitversion.outputs.semver }}"
