@@ -11,9 +11,6 @@ jobs:
   run_gitversion:
     runs-on: ubuntu-latest
     name: Run GitVersion
-    # only trigger for pushed tags
-    if: |
-      startsWith(github.event.ref, 'refs/tags/')
     outputs:
       semver: ${{ steps.run_gitversion.outputs.semver }}
       major: ${{ steps.run_gitversion.outputs.major }}
@@ -64,12 +61,12 @@ jobs:
     - name: Push to Docker Hub
       uses: docker/build-push-action@v2
       with:
-        push: ${{ github.event_name == 'push' || github.event.inputs.push_to_dockerhub == 'true' }}
+        push: ${{ startsWith(github.event.ref, 'refs/tags/') || github.event.inputs.push_to_dockerhub == 'true' }}
         tags: ${{ steps.get_config.outputs.docker_repository }}:${{ needs.run_gitversion.outputs.semver }}
 
     - name: Tag Docker Hub image with Major and MajorMinor tags
       if: needs.run_gitversion.outputs.prereleaseTag == ''
       uses: docker/build-push-action@v2
       with:
-        push: ${{ github.event_name == 'push' || github.event.inputs.push_to_dockerhub == 'true' }}
+        push: ${{ startsWith(github.event.ref, 'refs/tags/') || github.event.inputs.push_to_dockerhub == 'true' }}
         tags: ${{ steps.get_config.outputs.docker_repository }}:${{ needs.run_gitversion.outputs.major }},${{ steps.get_config.outputs.docker_repository }}:${{ needs.run_gitversion.outputs.majorMinor }}
