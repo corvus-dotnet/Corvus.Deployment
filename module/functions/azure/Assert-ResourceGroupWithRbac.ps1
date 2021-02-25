@@ -49,7 +49,7 @@ function Assert-ResourceGroupWithRbac
         [hashtable] $ResourceTags
     )
 
-    _EnsureAzureConnection
+    _EnsureAzureConnection -AzPowerShell | Out-Null
 
     $existingRg = Get-AzResourceGroup -Location $Location | `
                             Where-Object { $_.ResourceGroupName -eq $Name }

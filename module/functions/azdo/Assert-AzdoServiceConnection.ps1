@@ -61,7 +61,7 @@ function Assert-AzdoServiceConnection
         [string] $ServicePrincipalName
     )
 
-    _EnsureAzureConnection
+    _EnsureAzureConnection -AzureCli | Out-Null
     
     $ServicePrincipalName ??= $Name
     $SubscriptionId ??= $moduleContext.SubscriptionId

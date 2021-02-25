@@ -43,7 +43,7 @@ function Assert-AzureAdApiPermissions
         [guid] $ApplicationId
     )
 
-    _EnsureAzureConnection
+    _EnsureAzureConnection -AzPowerShell | Out-Null
     
     [hashtable[]] $accessRequirements = @()
     foreach ($permission in $ApplicationPermissions) {

@@ -34,6 +34,8 @@ function Assert-AzureServicePrincipalForRbac
         [string] $Name
     )
 
+    _EnsureAzureConnection -AzureCli | Out-Null
+
     $spSecret = $null
     $checkSpArgs = @(
         "ad sp list"
@@ -60,7 +62,6 @@ function Assert-AzureServicePrincipalForRbac
             )
             $existingSp = Invoke-AzCli $checkNewSpArgs -asJson
             if (!$existingSp) {
-                # TODO: retry?
                 throw "Unexpected error - the newly created service principal '$Name' could not be found"
             }
         }
