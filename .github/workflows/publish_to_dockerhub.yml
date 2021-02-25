@@ -1,7 +1,11 @@
 name: publish_to_dockerhub
 on:
-- push
-- workflow_dispatch
+  push:
+  workflow_dispatch:
+    inputs:
+      push_to_dockerhub:
+        default: false
+        required: true
 
 jobs:
   run_gitversion:
@@ -37,7 +41,13 @@ jobs:
     name: Publish to Docker Hub
     needs: run_gitversion
     steps:
-    - uses: actions/checkout@v2
+
+    - name: GitVersion Debug
+      run: |
+        echo "SemVer    : ${{ needs.run_gitversion.outputs.semver }}"
+        echo "Major     : ${{ needs.run_gitversion.outputs.major }}"
+        echo "MajorMinor: ${{ needs.run_gitversion.outputs.majorMinor }}"
+        echo "PreReleaseTag: ${{ needs.run_gitversion.outputs.preReleaseTag }}"
 
     - name: Read workflow configuration
       id: get_config
@@ -45,19 +55,21 @@ jobs:
       with:
         config_file: .github/config/docker.json
 
+    - name: Login to DockerHub
+      uses: docker/login-action@v1 
+      with:
+        username: ${{ secrets.ENDJIN_DOCKERHUB_USERNAME }}
+        password: ${{ secrets.ENDJIN_DOCKERHUB_ACCESSTOKEN }}
+
     - name: Push to Docker Hub
       uses: docker/build-push-action@v2
       with:
-        username: ${{ secrets.ENDJIN_DOCKERHUB_USERNAME  }}
-        password: ${{ secrets.ENDJIN_DOCKERHUB_ACCESSTOKEN  }}
-        repository: ${{ steps.get_config.outputs.docker_repository }}
-        tags: ${{ needs.run_gitversion.outputs.semver }}
+        push: ${{ github.event_name == 'push' || push_to_dockerhub == 'true' }}
+        tags: ${{ steps.get_config.outputs.docker_repository }}:${{ needs.run_gitversion.outputs.semver }}
 
     - name: Tag Docker Hub image with Major and MajorMinor tags
       if: needs.run_gitversion.outputs.prereleaseTag == ''
-      uses: docker/build-push-action@v1
+      uses: docker/build-push-action@v2
       with:
-        username: ${{ secrets.ENDJIN_DOCKERHUB_USERNAME  }}
-        password: ${{ secrets.ENDJIN_DOCKERHUB_ACCESSTOKEN  }}
-        repository: ${{ steps.get_config.outputs.docker_repository }}
-        tags: ${{ needs.run_gitversion.outputs.major }},${{ needs.run_gitversion.outputs.majorMinor }}
+        push: ${{ github.event_name == 'push' || push_to_dockerhub == 'true' }}
+        tags: ${{ steps.get_config.outputs.docker_repository }}:${{ needs.run_gitversion.outputs.major }},${{ steps.get_config.outputs.docker_repository }}:${{ needs.run_gitversion.outputs.majorMinor }}
