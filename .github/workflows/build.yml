@@ -15,8 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     name: Run GitVersion
     outputs:
-      semver: ${{ steps.gitversion.outputs.semver }}
-      preReleaseTag: ${{ steps.gitversion.outputs.preReleaseTag }}
+      semver: ${{ steps.run_gitversion.outputs.semver }}
+      major: ${{ steps.run_gitversion.outputs.major }}
+      majorMinor: ${{ steps.run_gitversion.outputs.major }}.${{ steps.run_gitversion.outputs.minor }}
+      preReleaseTag: ${{ steps.run_gitversion.outputs.preReleaseTag }}
     steps:
     - uses: actions/setup-dotnet@v1
       with:
@@ -39,3 +41,13 @@ jobs:
 
     - run: |
         echo "SemVer: ${{ steps.run_gitversion.outputs.gitversion_SemVer }}"
+
+  gitversion_debug:
+    runs-on: ubuntu-latest
+    needs: run_gitversion
+    steps:
+    - run: |
+        echo "SemVer    : ${{ needs.run_gitversion.outputs.semver }}"
+        echo "Major     : ${{ needs.run_gitversion.outputs.major }}"
+        echo "MajorMinor: ${{ needs.run_gitversion.outputs.majorMinor }}"
+        echo "PreReleaseTag: ${{ needs.run_gitversion.outputs.preReleaseTag }}"
