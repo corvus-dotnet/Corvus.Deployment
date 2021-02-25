@@ -34,7 +34,7 @@ function _EnsureAzureConnection
     function _validateAzureCli
     {
         $valid = (
-            $script:moduleContext.AzPowerShell.Connected -and `
+            $script:moduleContext.AzureCli.Connected -and `
             (_ValidateAzureConnectionDetails -SubscriptionId $script:moduleContext.SubscriptionId -AadTenantId $script:moduleContext.AadTenantId -AzureCli)
         )
         return $valid
@@ -48,7 +48,7 @@ function _EnsureAzureConnection
     $isValid = $false
 
     if ($AzPowerShell -and $AzureCli) {
-        $isValid =  _validateAzPowerShell -and _validateAzureCli`
+        $isValid =  _validateAzPowerShell -and _validateAzureCli
     }
     elseif ($AzPowerShell) {
         $isValid = _validateAzPowerShell
