@@ -58,9 +58,19 @@ function Connect-Azure
     if (-not $SkipAzPowerShell) {
         Write-Host "Validating Az PowerShell connection"
         
-        if (!(Get-AzContext) -and $isInteractive) {
+        $ctx = Get-AzContext
+        if (!$ctx -and $isInteractive) {
             Write-Host "Not currently logged-in to Az PowerShell - triggering manual login"
             Connect-AzAccount -SubscriptionId $SubscriptionId -TenantId $AadTenantId | Out-Null
+        }
+        elseif ($ctx -and `
+                    $ctx.Tenant.Id -eq $AadTenantId -and `
+                    $ctx.Subscription.Id -ne $SubscriptionId
+        ) {
+            # Try to switch to the required subscription, if we are connected to the right tenant.
+            # This avoids an unnecessary validation failure when we're connected to the right tenant,
+            # but not the intended subscription
+            Set-AzContext -SubscriptionId $SubscriptionId | Out-Null
         }
 
         if (!(_ValidateAzureConnectionDetails -SubscriptionId $SubscriptionId -AadTenantId $AadTenantId -AzPowerShell)) {
