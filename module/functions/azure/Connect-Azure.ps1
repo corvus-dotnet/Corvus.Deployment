@@ -38,10 +38,10 @@ function Connect-Azure
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        $SubscriptionId,
+        [guid] $SubscriptionId,
 
         [Parameter(Mandatory=$true)]
-        $AadTenantId,
+        [guid] $AadTenantId,
 
         [switch] $SkipAzPowerShell,
         [switch] $SkipAzureCli
