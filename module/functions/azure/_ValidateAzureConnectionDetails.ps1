@@ -38,6 +38,7 @@ function _ValidateAzureConnectionDetails
             return $true
         }
         else {
+            Write-Warning "AzPowerShell connection failed validation"
             Write-Warning "SubscriptionId: Specified [$SubscriptionId], Actual [$($azContext.Subscription.Id)]"
             Write-Warning "TenantId      : Specified [$AadTenantId], Actual [$($azContext.Tenant.Id)]"
             return $false
@@ -57,6 +58,7 @@ function _ValidateAzureConnectionDetails
             return $true
         }
         else {
+            Write-Warning "AzureCli connection failed validation"
             Write-Warning "SubscriptionId: Specified [$SubscriptionId], Actual [$($currentAccount.id)]"
             Write-Warning "TenantId      : Specified [$AadTenantId], Actual [$($currentAccount.tenantId)]"
             return $false
