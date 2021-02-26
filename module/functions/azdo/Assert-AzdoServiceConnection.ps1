@@ -127,7 +127,7 @@ function Assert-AzdoServiceConnection
 
             $env:AZURE_DEVOPS_EXT_AZURE_RM_SERVICE_PRINCIPAL_KEY = $spSecret
             Write-Host "Registering new ADO Service Connection..."
-            $existingAdoServiceConnection = Invoke-AzCli $createArgs
+            $existingAdoServiceConnection = Invoke-AzCli $createArgs -asJson
             $env:AZURE_DEVOPS_EXT_AZURE_RM_SERVICE_PRINCIPAL_KEY = $null
         }
     }
