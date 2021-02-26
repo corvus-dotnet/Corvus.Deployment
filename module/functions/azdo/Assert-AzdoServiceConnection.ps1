@@ -113,7 +113,7 @@ function Assert-AzdoServiceConnection
         }
 
         # register ADO service connection
-        if ($PSCmdlet.ShouldProcess($Name, "Create Service Connection")) {
+        if ($PSCmdlet.ShouldProcess($Project, "Create Service Connection")) {
             $createArgs = @(
                 "devops service-endpoint azurerm create"
                 "--name $Name"
