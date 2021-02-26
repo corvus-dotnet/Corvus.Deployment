@@ -18,6 +18,10 @@ The username portion of the email address associated with the group
 .PARAMETER Description
 The description of the group
 
+.PARAMETER OwnersToAssignOnCreation
+The object IDs of the principals to assign as owners to the group.
+Note, that if the group already exists, we will not attempt to assign the owners (as the principal may not have sufficient privileges)
+
 .OUTPUTS
 AzureAD group definition object
 
@@ -33,7 +37,10 @@ function Assert-AzureAdSecurityGroup
         [string] $EmailName,
 
         [Parameter()]
-        [string] $Description
+        [string] $Description,
+
+        [Parameter()]
+        [string[]] $OwnersToAssignOnCreation
     )
 
     function _updateGroup{
@@ -71,13 +78,21 @@ function Assert-AzureAdSecurityGroup
             mailNickname = $EmailName
             mailEnabled = $false
             securityEnabled = $true
+            
+        }
+
+        if ($OwnersToAssignOnCreation) {
+            $body["owners@odata.bind"] = @()
+            $body["owners@odata.bind"] += $OwnersToAssignOnCreation | ForEach-Object {
+                "https://graph.microsoft.com/v1.0/directoryObjects/$_"
+            }
         }
     
         if ($Description) {
             $body["description"] = $Description
         }
     
-        $bodyToJson = (ConvertTo-Json $body -Compress).replace('"','\"').replace(':\', ': \').replace("'", "''")
+        $bodyToJson = (ConvertTo-Json $body -Compress -Depth 99).replace('"','\"').replace(':\', ': \').replace("'", "''")
     
         $cmd = "rest --uri 'https://graph.microsoft.com/v1.0/groups' --method 'POST' --body '$bodyToJson' --headers content-type=application/json"
         
@@ -92,6 +107,18 @@ function Assert-AzureAdSecurityGroup
 
     if ($existingGroup) {
         Write-Host "Security group with name $($existingGroup.displayName) already exists."
+
+        if ($OwnersToAssignOnCreation) {
+            $groupOwnersIds = Invoke-AzCliRestCommand -Uri "https://graph.microsoft.com/v1.0/groups/$($existingGroup.id)/owners" | ForEach-Object {
+                $_.id
+            }
+
+            $OwnersToAssignOnCreation | ForEach-Object {
+                if ($_ -notin $groupOwnersIds) {
+                    Write-Warning "Object ID '$_' was specified to be assigned as group owner, but group already exists so we cannot do the assignment."
+                }
+            }
+        }
 
         $result = _updateGroup
     }
