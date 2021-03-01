@@ -109,7 +109,7 @@ function Assert-AzureAdSecurityGroup
         Write-Host "Security group with name $($existingGroup.displayName) already exists."
 
         if ($OwnersToAssignOnCreation) {
-            $groupOwnersIds = Invoke-AzCliRestCommand -Uri "https://graph.microsoft.com/v1.0/groups/$($existingGroup.id)/owners" | ForEach-Object {
+            $groupOwnersIds = (Invoke-AzCliRestCommand -Uri "https://graph.microsoft.com/beta/groups/$($existingGroup.id)/owners").value | ForEach-Object {
                 $_.id
             }
 
