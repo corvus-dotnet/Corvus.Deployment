@@ -145,6 +145,10 @@
     "defaultSparkPoolAutoPauseDelayMinutes": {
       "type": "int",
       "defaultValue": 15
+    },
+    "workspaceRepositoryConfiguration": {
+      "type": "object",
+      "defaultValue": {}
     }
   },
   "variables": {
@@ -176,7 +180,8 @@
           "filesystem": "[parameters('defaultDataLakeStorageFilesystemName')]"
         },
         "adlaResourceId": "[parameters('adlaResourceId')]",
-        "managedVirtualNetwork": "[parameters('managedVirtualNetwork')]"
+        "managedVirtualNetwork": "[parameters('managedVirtualNetwork')]",
+        "workspaceRepositoryConfiguration": "[parameters('workspaceRepositoryConfiguration')]"
       },
       "resources": [
         {
