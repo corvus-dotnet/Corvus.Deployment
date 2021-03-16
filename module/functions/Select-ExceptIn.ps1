@@ -17,7 +17,7 @@ The array of hashtables that should exist in the reference array.
 The array of hashtables to be compared with the input array.
 
 .OUTPUTS
-An array of hashtables representing the input hashtables that do not existing in the reference array.
+An array of hashtables representing the input hashtables that do not exist in the reference array.
 
 .EXAMPLE
 $input = @(
