@@ -57,12 +57,17 @@ function Select-ExceptIn
 
     Process {
         foreach ($inputItem in $InputObject) {
+            $inputItemToCompare = _sortedHashtable($inputItem)
+
             # Assume the item is missing unless we find a match
             $isMissing = $true
             foreach ($referenceItem in $ReferenceArray) {
-                $res = Compare-Object $referenceItem.Values $inputItem.Values
-                if (!$res) {
-                    # When the comparison returns null then we have found a hashtable in the
+                $refItemToCompare = _sortedHashtable($referenceItem)
+
+                $keysDiff = Compare-Object $refItemToCompare.Keys $inputItemToCompare.Keys
+                $valuesDiff = Compare-Object $refItemToCompare.Values $inputItemToCompare.Values
+                if (!$keysDiff -and !$valuesDiff) {
+                    # When the comparisons return null then we have found a hashtable in the
                     # reference array that exactly matches the input item currently being
                     # processed.
                     
@@ -81,4 +86,20 @@ function Select-ExceptIn
     End {
         @(,$results)
     }
+}
+
+function _sortedHashtable
+{
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)]
+        [hashtable] $Hashtable
+    )
+
+    $sortedHashtable = [ordered]@{}
+    $Hashtable.Keys | Sort-Object | ForEach-Object {
+        $sortedHashtable.Add($_, $Hashtable[$_])
+    }
+
+    $sortedHashtable
 }

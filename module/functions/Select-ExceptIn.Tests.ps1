@@ -85,6 +85,40 @@ Describe "Sekect-ExceptIn Tests" {
                 $res[1].Keys.Count | Should -Be 3
             }
         }
+
+        Context "Mismatched key ordering" {
+            # Ensures that hashtables with keys in a different order should not affect the output
+            $input = @(
+                @{ Name = "foo"; Location = "uk"; Id = "1000" }   
+            )
+
+            $reference = @(
+                @{ Name = "foo"; Id = "1000"; Location = "uk" }
+            )
+
+            $res = $input | Select-ExceptIn $reference
+
+            It "should still correctly identify the matching entries" {
+                $res.Count | Should -Be 0
+            }
+        }
+
+        Context "Mismatched key names" {
+            # Ensures that hashtables with the same values but different keys is properly compared
+            $input = @(
+                @{ Name = "foo"; Location = "uk"; Id = "1000" }   
+            )
+
+            $reference = @(
+                @{ Name = "foo"; Locale = "uk"; Identifier = "1000" }
+            )
+
+            $res = $input | Select-ExceptIn $reference
+
+            It "should correctly identify the missing entry" {
+                $res.Count | Should -Be 1
+            }
+        }
     }
 
     Context "ValueFromParameter" {
@@ -153,6 +187,40 @@ Describe "Sekect-ExceptIn Tests" {
                 $res[1] | Should -BeOfType System.Collections.Hashtable
                 $res[0].Keys.Count | Should -Be 3
                 $res[1].Keys.Count | Should -Be 3
+            }
+        }
+
+        Context "Mismatched key ordering" {
+            # Ensures that hashtables with keys in a different order should not affect the output
+            $input = @(
+                @{ Name = "foo"; Location = "uk"; Id = "1000" }   
+            )
+
+            $reference = @(
+                @{ Name = "foo"; Id = "1000"; Location = "uk" }
+            )
+
+            $res = Select-ExceptIn -InputObject $input -ReferenceArray $reference
+
+            It "should still correctly identify the matching entries" {
+                $res.Count | Should -Be 0
+            }
+        }
+
+        Context "Mismatched key names" {
+            # Ensures that hashtables with the same values but different keys is properly compared
+            $input = @(
+                @{ Name = "foo"; Location = "uk"; Id = "1000" }   
+            )
+
+            $reference = @(
+                @{ Name = "foo"; Locale = "uk"; Identifier = "1000" }
+            )
+
+            $res = Select-ExceptIn -InputObject $input -ReferenceArray $reference
+
+            It "should correctly identify the missing entry" {
+                $res.Count | Should -Be 1
             }
         }
     }
