@@ -36,9 +36,9 @@ function Invoke-CommandWithRetry
     $success = $false
 
     # Private functions for mocking purposes
-    function _logWarning($delay)
+    function _logRetry($delay,$errorRecord)
     {
-        Write-Warning ("Command failed - retrying in {0} seconds" -f $delay)
+        Write-Warning ("Command failed - $($errorRecord.Exception.Message) - retrying in {0} seconds" -f $delay)
     }
 
     do
@@ -53,10 +53,11 @@ function Invoke-CommandWithRetry
         catch
         {   
             if ($currentRetry -ge $RetryCount) {
-                throw ("Exceeded retry limit when running command [{0}]" -f $Command)
+                Write-Warning ("Exceeded retry limit when running command [{0}]" -f $Command)
+                throw $_
             }
             else {
-                _logWarning $RetryDelay
+                _logRetry $RetryDelay $_
                 Start-Sleep -s $RetryDelay
             }
             $currentRetry++

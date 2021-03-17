@@ -4,7 +4,7 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".Tests.ps1", ".p
 . "$here\$sut"
 
 # Ensure this internal function is available for mocking
-function _logWarning {}
+function _logRetry {}
 
 Describe "Invoke-CommandWithRetry" {
     
@@ -18,31 +18,36 @@ Describe "Invoke-CommandWithRetry" {
     }
 
     Context "When the command does error" {
-        Mock _logWarning {}
+        Mock _logRetry {}
+        Mock Write-Warning {}
 
         It "should bubble up the exception" {
-            { Invoke-CommandWithRetry { throw "force retry" } -RetryDelay 0 } | Should Throw
+            { Invoke-CommandWithRetry { throw "force retry" } -RetryDelay 0 } | Should Throw "force retry"
+            Assert-MockCalled Write-Warning -Times 1
         }
 
         It "should retry 5 times by default" {
-            Assert-MockCalled _logWarning -Times 5
+            Assert-MockCalled _logRetry -Times 5
         }
     }
 
-    Context "When the retry count is changed overriden" {
-        Mock _logWarning {}
+    Context "When the retry count is overridden" {
+        Mock _logRetry {}
+        Mock Write-Warning {}
 
         It "should bubble up the exception" {
-            { Invoke-CommandWithRetry { throw "force retry" } -RetryDelay 0 -RetryCount 10 } | Should Throw
+            { Invoke-CommandWithRetry { throw "force retry" } -RetryDelay 0 -RetryCount 10 } | Should Throw "force retry"
+            Assert-MockCalled Write-Warning -Times 1
         }
 
         It "should retry the specified amount of times" {
-            Assert-MockCalled _logWarning -Times 10
+            Assert-MockCalled _logRetry -Times 10
         }
     }
 
     Context "When the command eventually passes" {
-        Mock _logWarning {}
+        Mock _logRetry {}
+        Mock Write-Warning {}
 
         $global:failureCount = 0;
 
@@ -60,10 +65,11 @@ Describe "Invoke-CommandWithRetry" {
 
         It "should not bubble the exception" {
             $result | Should Not Throw
+            Assert-MockCalled Write-Warning -Times 0
         }
 
         It "should log attempting the retries" {
-            Assert-MockCalled _logWarning -Times 2
+            Assert-MockCalled _logRetry -Times 2
         }
 
         It "should return the output" {
