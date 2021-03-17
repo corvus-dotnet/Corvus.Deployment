@@ -7,7 +7,7 @@ $sut = (Split-Path -Leaf $PSCommandPath) -replace ".Tests"
 
 . "$here\$sut"
 
-Describe "Sekect-ExceptIn Tests" {
+Describe "Select-ExceptIn Tests" {
 
     $singleReference = @(
         @{ Name = "foo"; Location = "uk"; Id = "1000" }

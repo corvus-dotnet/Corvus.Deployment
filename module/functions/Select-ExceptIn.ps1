@@ -10,6 +10,22 @@ Compares two Hashtable arrays and returns the hashtable entries from the input t
 This is intended to find hashtable-based objects that are missing from the reference array of hashtables.  For
 example, as part of some synchronisation logic.
 
+NOTE: This function does not support nested hashtables as it relies on Compare-Object for the comparison of
+each hashtable key.
+
+.NOTES
+This function's primary use-case is to support determining how a 'desired state' differs from a 'current state'.
+
+For example, comparing the current Azure resource manager permissions with those defined in configuration.
+
+In this case the the raw objects cannot be compared as they have different properties - the current state will be
+available as the 'Microsoft.Azure.Commands.Resources.Models.Authorization.PSRoleAssignment' type, whilst the configuration
+may defined with a much simpler hashtable structure.
+
+Therefore the usage of this function assumes that custom projections will be created that map the current and
+desired states into a common structure and it is those projections that get passed to this function.  It is then
+the responsibility of the consumer to interpret the results for their particular scenario.
+
 .PARAMETER InputObject
 The array of hashtables that should exist in the reference array.
 
