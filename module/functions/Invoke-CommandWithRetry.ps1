@@ -49,6 +49,11 @@ function Invoke-CommandWithRetry
             $result = Invoke-Command $command -ErrorAction Stop
             Write-Verbose ("Command succeeded." -f $Command)
             $success = $true
+
+            # It is helpful to explicitly log when it succeeds after having to retry
+            if ($currentRetry -gt 0) {
+                Write-Host "Command succeeded on retry attempt: $currentRetry"
+            }
         }
         catch
         {   

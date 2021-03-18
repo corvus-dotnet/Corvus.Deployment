@@ -9,11 +9,18 @@ function _logRetry {}
 Describe "Invoke-CommandWithRetry" {
     
     Context "When the command does not error" {
+        Mock _logRetry {}
+        Mock Write-Host {}
 
         $result = Invoke-CommandWithRetry { return $true }
 
         It "should return the output" {
             $result | Should Be $true
+        }
+
+        It "should not log a success after retry" {
+            Assert-MockCalled _logRetry -Times 0
+            Assert-MockCalled Write-Host -Times 0
         }
     }
 
@@ -48,6 +55,7 @@ Describe "Invoke-CommandWithRetry" {
     Context "When the command eventually passes" {
         Mock _logRetry {}
         Mock Write-Warning {}
+        Mock Write-Host {}
 
         $global:failureCount = 0;
 
@@ -74,6 +82,10 @@ Describe "Invoke-CommandWithRetry" {
 
         It "should return the output" {
             $result | Should Be $true
+        }
+
+        It "should log a success after retry" {
+            Assert-MockCalled Write-Host -Times 1
         }
     }
 
