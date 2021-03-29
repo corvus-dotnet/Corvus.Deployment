@@ -146,6 +146,19 @@
       "type": "int",
       "defaultValue": 15
     },
+    "synapsePrivateEndpointSubnetResourceId": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "synapsePrivateEndpointServices": {
+      "type": "array",
+      "defaultValue": [],
+      "allowedValues": [
+        "Dev",
+        "Sql",
+        "SqlOnDemand"
+      ] 
+    },
     "workspaceRepositoryConfiguration": {
       "type": "object",
       "defaultValue": {}
@@ -264,6 +277,97 @@
         "[concat('Microsoft.Resources/deployments/', parameters('defaultDataLakeStorageFilesystemName'))]"
       ],
       "tags": "[variables('tags')]"
+    },
+    {
+      "condition": "[not(empty(parameters('synapsePrivateEndpointServices')))]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-10-01",
+      "name": "[concat(deployment().name, '-private-endpoints')]",
+      "dependsOn": [
+        "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
+      ],
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "synapsePrivateEndpointSubnetResourceId": {
+            "value": "[parameters('synapsePrivateEndpointSubnetResourceId')]"
+          },
+          "synapsePrivateEndpointServices": {
+            "value": "[parameters('synapsePrivateEndpointServices')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "workspaceName": {
+            "value": "[parameters('workspaceName')]"
+          },
+          "tags": {
+            "value": "[parameters('tagValues')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "synapsePrivateEndpointSubnetResourceId": {
+              "type": "string"
+            },
+            "synapsePrivateEndpointServices": {
+              "type": "array",
+              "allowedValues": [
+                "Dev",
+                "Sql",
+                "SqlOnDemand"
+              ]
+            },
+            "workspaceName": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            }
+          },
+          "variables": {
+            "privateEndpointBaseName": "[concat('private-endpoint-synapse-', parameters('workspaceName'))]",
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/privateEndpoints",
+              "apiVersion": "2020-06-01",
+              "name": "[toLower(concat(variables('privateEndpointBaseName'), '-', parameters('synapsePrivateEndpointServices')[copyIndex()]))]",
+              "copy": {
+                "name": "endpointCopy",
+                "count": "[length(parameters('synapsePrivateEndpointServices'))]"
+              },
+              "location": "[parameters('location')]",
+              "properties": {
+                "subnet": {
+                  "id": "[parameters('synapsePrivateEndpointSubnetResourceId')]"
+                },
+                "privateLinkServiceConnections": [
+                  {
+                    "name": "[toLower(concat(variables('privateEndpointBaseName'), '-', parameters('synapsePrivateEndpointServices')[copyIndex()]))]",
+                    "properties": {
+                      "privateLinkServiceId": "[resourceId('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]",
+                      "groupIds": [
+                        "[parameters('synapsePrivateEndpointServices')[copyIndex()]]"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "tags": "[parameters('tags')]"
+            }
+          ]
+        }
+      }
     },
     {
       "condition": "[parameters('setWorkspaceIdentityRbacOnStorageAccount')]",
