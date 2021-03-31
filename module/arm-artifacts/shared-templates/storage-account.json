@@ -47,6 +47,14 @@
     "tagValues": {
       "type": "object",
       "defaultValue": {}
+    },
+    "enabledAdlsPrivateEndpoint": {
+      "type": "bool",
+      "defaultValue": false
+    },
+    "subnetResourceId": {
+      "type": "string",
+      "defaultValue": ""
     }
   },
   "variables": {
@@ -86,6 +94,82 @@
       "copy": {
           "name": "storageContainers",
           "count": "[if(not(empty(parameters('storageContainerNames'))), length(parameters('storageContainerNames')), 1)]"
+      }
+    },
+    {
+      "condition": "[parameters('enabledAdlsPrivateEndpoint')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-10-01",
+      "name": "[concat(deployment().name, '-private-endpoints')]",
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', parameters('storageAccountName'))]"
+      ],
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "storageAccountName": {
+            "value": "[parameters('storageAccountName')]"
+          },
+          "subnetResourceId": {
+            "value": "[parameters('subnetResourceId')]"
+          },
+          "location": {
+            "value": "[parameters('storageAccountLocation')]"
+          },
+          "tags": {
+            "value": "[parameters('tagValues')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "storageAccountName": {
+              "type": "string"
+            },
+            "subnetResourceId": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            }
+          },
+          "variables": {
+            "privateEndpointBaseName": "[concat('private-endpoint-adls-', parameters('storageAccountName'))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/privateEndpoints",
+              "apiVersion": "2020-06-01",
+              "name": "[toLower(variables('privateEndpointBaseName'))]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "subnet": {
+                  "id": "[parameters('subnetResourceId')]"
+                },
+                "privateLinkServiceConnections": [
+                  {
+                    "name": "[toLower(variables('privateEndpointBaseName'))]",
+                    "properties": {
+                      "privateLinkServiceId": "[resourceId('Microsoft.Storage/storageAccounts/', parameters('storageAccountName'))]",
+                      "groupIds": [
+                        "dfs"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "tags": "[parameters('tags')]"
+            }
+          ]
+        }
       }
     }
   ],
