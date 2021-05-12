@@ -1,7 +1,7 @@
-FROM mcr.microsoft.com/powershell:7.1.2-debian-buster-slim
+FROM mcr.microsoft.com/powershell:7.1.3-debian-buster-slim
 
 # Install azure-cli
-ARG AZCLI_VER=2.19.1-1~buster
+ARG AZCLI_VER=2.22.1-1~buster
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y upgrade \
     && apt-get -y install --no-install-recommends ca-certificates curl apt-transport-https lsb-release gnupg wget \
@@ -19,8 +19,10 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
 # Install PowerShell Az module
-ARG AZ_PWSH_VER=5.5.0
+ARG AZ_PWSH_VER=5.9.0
 RUN pwsh -noni -c "\$ProgressPreference='SilentlyContinue'; Install-Module Az -AllowClobber -RequiredVersion '${AZ_PWSH_VER}' -Repository PSGallery -Force -Scope AllUsers"
+ARG AZ_SYNAPSE_VER=0.11.0
+RUN pwsh -noni -c "\$ProgressPreference='SilentlyContinue'; Install-Module Az.Synapse -AllowClobber -RequiredVersion '${AZ_SYNAPSE_VER}' -Repository PSGallery -Force -Scope AllUsers"
 
 # Install Corvus.Deployment module
 ADD module /usr/local/share/powershell/Modules/Corvus.Deployment
@@ -29,5 +31,9 @@ ADD module /usr/local/share/powershell/Modules/Corvus.Deployment
 RUN useradd -c 'corvus.deployment user' -m -d /home/corvus -s /bin/bash corvus
 USER corvus
 ENV HOME /home/corvus
+
+# Bicep installs into the user folder
+ARG AZ_BICEP_VER=v0.3.255
+RUN az bicep install --version $AZ_BICEP_VER
 
 WORKDIR /home/corvus
