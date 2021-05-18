@@ -12,6 +12,9 @@ creating the target resource group (if necessary) and invoking the deployment of
 
 Also provides support for retries for any errors not caused by 'InvalidTemplate' exceptions.
 
+.PARAMETER DeploymentType
+The type of ARM deployment (e.g. Resource Group, Subscription, Tenant)
+
 .PARAMETER ResourceGroupName
 The name of the target resource group.
 
@@ -59,13 +62,15 @@ function Invoke-ArmTemplateDeployment
     param
     (
         [Parameter(Mandatory=$true)]
-        [string] $ResourceGroupName,
-
-        [Parameter(Mandatory=$true)]
         [string] $Location,
 
         [Parameter(Mandatory=$true)]
         [string] $ArmTemplatePath,
+
+        [ValidateSet("ResourceGroup","Subscription","Tenant")]
+        [string] $DeploymentType = "ResourceGroup",
+
+        [string] $ResourceGroupName,
 
         [Hashtable] $TemplateParameters = @{},
         [switch] $NoArtifacts,
@@ -82,76 +87,51 @@ function Invoke-ArmTemplateDeployment
     # Check whether we have a valid AzPowerShell connection
     _EnsureAzureConnection -AzPowerShell -ErrorAction Stop
 
+    # ensure Bicep cli is installed and available to Az.PowerShell, if needed
+    if ($ArmTemplatePath.ToLower().EndsWith(".bicep")) {
+        if (!(Get-Command bicep -ErrorAction SilentlyContinue)) {
+            Write-Host "Bootstrapping Bicep cli tool..."
+            & az bicep install --version v0.3.539
+            & az bicep version
+            $bicepPath = [IO.Path]::Join($env:HOME, ".azure", "bin")
+            $env:PATH = "$($env:PATH){0}$bicepPath" -f [IO.Path]::PathSeparator
+            # verify the install
+            Get-Command bicep | Select-Object -ExpandProperty Path
+        }
+    }
+
     # For single ARM template scenarios, ignore the staging functionality
     if (!$NoArtifacts) {
-        if (!$StagingStorageAccountName) {
-            $StagingStorageAccountName = ('stage{0}{1}' -f $Location, ($script:moduleContext.SubscriptionId.ToString()).Replace('-', '').ToLowerInvariant()).SubString(0, 24)
-        }
-        $StorageContainerName = $ResourceGroupName.ToLowerInvariant().Replace(".", "") + '-stageartifacts'
-
-        # Lookup whether the storage account already exists elsewhere in the current subscription
-        $StorageAccount = Get-AzStorageAccount | Where-Object { $_.StorageAccountName -eq $StagingStorageAccountName }
-
-        # Create the storage account if it doesn't already exist
-        if ($null -eq $StorageAccount) {
-            New-AzResourceGroup -Location $Location -Name $StorageResourceGroupName -Force
-            $StorageAccount = New-AzStorageAccount -StorageAccountName $StagingStorageAccountName `
-                                                -Type 'Standard_LRS' `
-                                                -ResourceGroupName $StorageResourceGroupName `
-                                                -Location $Location
-        }
-
-        # Copy files from the local storage staging location to the storage account container
-        New-AzStorageContainer -Name $StorageContainerName -Context $StorageAccount.Context -ErrorAction SilentlyContinue *>&1
-
-        # upload shared linked templates
-        $sharedArtifactFilePaths = Get-ChildItem $SharedArtifactsFolderPath -Recurse -File | ForEach-Object -Process {$_.FullName}
-        foreach ($SourcePath in $sharedArtifactFilePaths) {
-            Set-AzStorageBlobContent `
-                -File $SourcePath `
-                -Blob $SourcePath.Substring($SharedArtifactsFolderPath.length + 1) `
-                -Container $StorageContainerName `
-                -Context $StorageAccount.Context `
-                -Force `
-                -Verbose:$false | Out-Null
-        }
-
-        # upload any additional linked templates
-        if ($AdditionalArtifactsFolderPath) {
-            $additionalArtifactFilePaths = Get-ChildItem $AdditionalArtifactsFolderPath -Recurse -File | ForEach-Object -Process {$_.FullName}
-            foreach ($SourcePath in $additionalArtifactFilePaths) {
-                Set-AzStorageBlobContent `
-                    -File $SourcePath `
-                    -Blob $SourcePath.Substring($AdditionalArtifactsFolderPath.length + 1) `
-                    -Container $StorageContainerName `
-                    -Context $StorageAccount.Context `
-                    -Force `
-                    -Verbose:$false | Out-Null
-            }
-        }
-
-        $OptionalParameters[$ArtifactsLocationName] = $StorageAccount.Context.BlobEndPoint + $StorageContainerName
-        # Generate a 4 hour SAS token for the artifacts location if one was not provided in the parameters file
-        $StagingSasToken = New-AzStorageContainerSASToken `
-                                    -Name $StorageContainerName `
-                                    -Context $StorageAccount.Context `
-                                    -Permission r `
-                                    -ExpiryTime (Get-Date).AddHours(4)
-        $OptionalParameters[$ArtifactsLocationSasTokenName] = ConvertTo-SecureString -AsPlainText -Force $StagingSasToken
+        _DeployArmArtifacts -AdditionalArtifactsFolderPath $AdditionalArtifactsFolderPath `
+                            -SharedArtifactsFolderPath $SharedArtifactsFolderPath `
+                            -StagingStorageAccountName $StagingStorageAccountName `
+                            -StorageResourceGroupName $StorageResourceGroupName `
+                            -ArtifactsLocationName $ArtifactsLocationName `
+                            -ArtifactsLocationSasTokenName $ArtifactsLocationSasTokenName
     }
 
     # Create the resource group only when it doesn't already exist
-    if ( $null -eq (Get-AzResourceGroup -Name $ResourceGroupName -Verbose -ErrorAction SilentlyContinue) ) {
+    if ( $DeploymentType -eq "ResourceGroup" -and `
+            $null -eq (Get-AzResourceGroup -Name $ResourceGroupName -Verbose -ErrorAction SilentlyContinue) ) {
         New-AzResourceGroup -Name $ResourceGroupName -Location $Location -Verbose -Force -ErrorAction Stop
     }
 
+    # Setup required parameters for the relevant deployment type
+    $argsForDeployType = @{ TemplateFile = $ArmTemplatePath }
+    if ($DeploymentType -eq "ResourceGroup") {
+        $argsForDeployType += @{ ResourceGroupName = $ResourceGroupName }
+    }
+    else {
+        $argsForDeployType += @{ Location = $Location }
+    }
+
     Write-Host "Validating ARM template ($ArmTemplatePath)..."
-    $validationErrors = Test-AzResourceGroupDeployment `
-                        -ResourceGroupName $ResourceGroupName `
-                        -TemplateFile $ArmTemplatePath `
-                        @OptionalParameters `
-                        @TemplateParameters `
-                        -Verbose
+    # Dynamically call the relevant cmdlet for the current deployment type
+    $validationErrors = & "Test-Az$($DeploymentType)Deployment" `
+                                    @argsForDeployType `
+                                    @OptionalParameters `
+                                    @TemplateParameters `
+                                    -Verbose
     if ($validationErrors) {
         Write-Warning ($validationErrors | Out-String)
         throw "ARM Template validation errors - check previous warnings"
@@ -162,6 +142,12 @@ function Invoke-ArmTemplateDeployment
     $maxRetries = 3
     $DeploymentResult = $null
     $success = $false
+
+    # DeploymentType specific args for the actual deployment
+    if ($DeploymentType -eq "ResourceGroup") {
+        $argsForDeployType += @{ Force = $True }
+    }
+
     while (!$success -and $retries -le $maxRetries) {
         if ($retries -gt 1) { Write-Host "Waiting 30secs before retry..."; Start-Sleep -Seconds 30 }
 
@@ -171,14 +157,13 @@ function Invoke-ArmTemplateDeployment
                                         $retries
         try {
             Write-Host "Deploying ARM template ($ArmTemplatePath)..."
-            $DeploymentResult = New-AzResourceGroupDeployment `
-                -Name $deployName `
-                -ResourceGroupName $ResourceGroupName `
-                -TemplateFile $ArmTemplatePath `
-                @OptionalParameters `
-                @TemplateParameters `
-                -Force `
-                -Verbose
+            # Dynamically call the relevant cmdlet for the current deployment type
+            $DeploymentResult = & "New-Az$($DeploymentType)Deployment" `
+                                        -Name $deployName `
+                                        @argsForDeployType `
+                                        @OptionalParameters `
+                                        @TemplateParameters `
+                                        -Verbose
 
             # The template deployed successfully, drop out of retry loop
             $success = $true
