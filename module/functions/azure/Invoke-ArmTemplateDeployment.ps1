@@ -85,18 +85,18 @@ function Invoke-ArmTemplateDeployment
     $OptionalParameters = @{}
 
     # Check whether we have a valid AzPowerShell connection
-    _EnsureAzureConnection -AzPowerShell -ErrorAction Stop
+    _EnsureAzureConnection -AzPowerShell -ErrorAction Stop | Out-Null
 
     # ensure Bicep cli is installed and available to Az.PowerShell, if needed
     if ($ArmTemplatePath.ToLower().EndsWith(".bicep")) {
         if (!(Get-Command bicep -ErrorAction SilentlyContinue)) {
             Write-Host "Bootstrapping Bicep cli tool..."
-            & az bicep install --version v0.3.539
-            & az bicep version
+            & az bicep install --version v0.3.539 | Out-String | Write-Verbose
+            & az bicep version | Out-String | Write-Verbose
             $bicepPath = [IO.Path]::Join($env:HOME, ".azure", "bin")
             $env:PATH = "$($env:PATH){0}$bicepPath" -f [IO.Path]::PathSeparator
             # verify the install
-            Get-Command bicep | Select-Object -ExpandProperty Path
+            Get-Command bicep | Select-Object -ExpandProperty Path | Out-String | Write-Verbose
         }
     }
 
@@ -113,7 +113,7 @@ function Invoke-ArmTemplateDeployment
     # Create the resource group only when it doesn't already exist
     if ( $DeploymentType -eq "ResourceGroup" -and `
             $null -eq (Get-AzResourceGroup -Name $ResourceGroupName -Verbose -ErrorAction SilentlyContinue) ) {
-        New-AzResourceGroup -Name $ResourceGroupName -Location $Location -Verbose -Force -ErrorAction Stop
+        New-AzResourceGroup -Name $ResourceGroupName -Location $Location -Verbose -Force -ErrorAction Stop | Out-Null
     }
 
     # Setup required parameters for the relevant deployment type
