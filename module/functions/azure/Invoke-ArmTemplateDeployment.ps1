@@ -111,14 +111,14 @@ function Invoke-ArmTemplateDeployment
     }
 
     # Create the resource group only when it doesn't already exist
-    if ( $DeploymentType -eq "ResourceGroup" -and `
+    if ( $DeploymentScope -eq "ResourceGroup" -and `
             $null -eq (Get-AzResourceGroup -Name $ResourceGroupName -Verbose -ErrorAction SilentlyContinue) ) {
         New-AzResourceGroup -Name $ResourceGroupName -Location $Location -Verbose -Force -ErrorAction Stop | Out-Null
     }
 
     # Setup required parameters for the relevant deployment type
     $argsForDeployType = @{ TemplateFile = $ArmTemplatePath }
-    if ($DeploymentType -eq "ResourceGroup") {
+    if ($DeploymentScope -eq "ResourceGroup") {
         $argsForDeployType += @{ ResourceGroupName = $ResourceGroupName }
     }
     else {
@@ -127,7 +127,7 @@ function Invoke-ArmTemplateDeployment
 
     Write-Host "Validating ARM template ($ArmTemplatePath)..."
     # Dynamically call the relevant cmdlet for the current deployment type
-    $validationErrors = & "Test-Az$($DeploymentType)Deployment" `
+    $validationErrors = & "Test-Az$($DeploymentScope)Deployment" `
                                     @argsForDeployType `
                                     @OptionalParameters `
                                     @TemplateParameters `
@@ -143,8 +143,8 @@ function Invoke-ArmTemplateDeployment
     $DeploymentResult = $null
     $success = $false
 
-    # DeploymentType specific args for the actual deployment
-    if ($DeploymentType -eq "ResourceGroup") {
+    # DeploymentScope specific args for the actual deployment
+    if ($DeploymentScope -eq "ResourceGroup") {
         $argsForDeployType += @{ Force = $True }
     }
 
@@ -158,7 +158,7 @@ function Invoke-ArmTemplateDeployment
         try {
             Write-Host "Deploying ARM template ($ArmTemplatePath)..."
             # Dynamically call the relevant cmdlet for the current deployment type
-            $DeploymentResult = & "New-Az$($DeploymentType)Deployment" `
+            $DeploymentResult = & "New-Az$($DeploymentScope)Deployment" `
                                         -Name $deployName `
                                         @argsForDeployType `
                                         @OptionalParameters `
