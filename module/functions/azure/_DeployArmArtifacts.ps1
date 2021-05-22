@@ -1,3 +1,38 @@
+# <copyright file="_DeployArmArtifacts.ps1" company="Endjin Limited">
+# Copyright (c) Endjin Limited. All rights reserved.
+# </copyright>
+
+<#
+.SYNOPSIS
+Handles uploading linked ARM templates and other artifacts to a staging sstorage account.
+
+.DESCRIPTION
+Handles uploading linked ARM templates and other artifacts to a staging sstorage account.
+
+.PARAMETER AdditionalArtifactsFolderPath
+The file system path to additional linked ARM templates that need to be staged. The path should be to a directory that contains a
+directory named 'templates', within which these templates should reside.
+
+.PARAMETER SharedArtifactsFolderPath
+The file system path to the set of shared linked ARM templates that need to be staged. If using the library of such templates contained
+within this module, then this need not be specified.
+
+.PARAMETER StagingStorageAccountName
+The Azure storage account to use for staging ARM artifacts. When not specified, a name will be generated based on the Azure location and
+subscription ID. (e.g. 'stageeastus1234567890123)
+
+.PARAMETER StorageResourceGroupName
+The resource group where the Azure storage account used for staging ARM artifacts resides. When not specified, a name will be derived based on
+the Azure location.
+
+.PARAMETER ArtifactsLocationName
+The name of the parameter used by the main ARM template to refer to the location of the staged ARM artifacts.
+
+.PARAMETER ArtifactsLocationSasTokenName
+The name of the parameter used by the main ARM template to refer to the SAS token that has access to the Azure storage account used for staging
+ARM artifacts.
+
+#>
 function _DeployArmArtifacts
 {
     [CmdletBinding()]
@@ -18,6 +53,9 @@ function _DeployArmArtifacts
         [string] $StagingStorageAccountName
 
     )
+
+    # Check whether we have a valid AzPowerShell connection
+    _EnsureAzureConnection -AzPowerShell -ErrorAction Stop | Out-Null
 
     if (!$StagingStorageAccountName) {
         $StagingStorageAccountName = ('stage{0}{1}' -f $Location, ($script:moduleContext.SubscriptionId.ToString()).Replace('-', '').ToLowerInvariant()).SubString(0, 24)
