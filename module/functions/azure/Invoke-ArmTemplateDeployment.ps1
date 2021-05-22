@@ -12,8 +12,8 @@ creating the target resource group (if necessary) and invoking the deployment of
 
 Also provides support for retries for any errors not caused by 'InvalidTemplate' exceptions.
 
-.PARAMETER DeploymentType
-The type of ARM deployment (e.g. Resource Group, Subscription, Tenant)
+.PARAMETER DeploymentScope
+The target scope of the ARM deployment (e.g. Resource Group, Subscription, Tenant)
 
 .PARAMETER ResourceGroupName
 The name of the target resource group.
@@ -68,7 +68,7 @@ function Invoke-ArmTemplateDeployment
         [string] $ArmTemplatePath,
 
         [ValidateSet("ResourceGroup","Subscription","Tenant")]
-        [string] $DeploymentType = "ResourceGroup",
+        [string] $DeploymentScope = "ResourceGroup",
 
         [string] $ResourceGroupName,
 
