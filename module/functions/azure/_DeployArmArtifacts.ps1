@@ -4,10 +4,10 @@
 
 <#
 .SYNOPSIS
-Handles uploading linked ARM templates and other artifacts to a staging sstorage account.
+Handles uploading linked ARM templates and other artifacts to a staging storage account.
 
 .DESCRIPTION
-Handles uploading linked ARM templates and other artifacts to a staging sstorage account.
+Handles uploading linked ARM templates and other artifacts to a staging storage account.
 
 .PARAMETER AdditionalArtifactsFolderPath
 The file system path to additional linked ARM templates that need to be staged. The path should be to a directory that contains a
