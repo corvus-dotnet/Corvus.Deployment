@@ -67,7 +67,7 @@ function Invoke-ArmTemplateDeployment
         [Parameter(Mandatory=$true)]
         [string] $ArmTemplatePath,
 
-        [ValidateSet("ResourceGroup","Subscription","Tenant")]
+        [ValidateSet("ResourceGroup","Subscription","ManagementGroup","Tenant")]
         [string] $DeploymentScope = "ResourceGroup",
 
         [string] $ResourceGroupName,
