@@ -33,7 +33,7 @@ USER corvus
 ENV HOME /home/corvus
 
 # Bicep installs into the user folder
-ARG AZ_BICEP_VER=v0.3.255
+ARG AZ_BICEP_VER=v0.3.539
 RUN az bicep install --version $AZ_BICEP_VER
 
 WORKDIR /home/corvus
