@@ -28,7 +28,7 @@ RUN pwsh -noni -c "\$ProgressPreference='SilentlyContinue'; Install-Module Az.Sy
 ADD module /usr/local/share/powershell/Modules/Corvus.Deployment
 
 # Install Bicep so it is available via azure-cli and system path
-ARG AZ_BICEP_VER=v0.3.539
+ARG AZ_BICEP_VER=v0.4.63
 RUN az bicep install --version $AZ_BICEP_VER \
     && mv /root/.azure/bin/bicep /usr/local/bin/bicep \
     && chmod 755 /usr/local/bin/bicep \
