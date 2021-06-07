@@ -21,19 +21,26 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
 # Install PowerShell Az module
 ARG AZ_PWSH_VER=5.9.0
 RUN pwsh -noni -c "\$ProgressPreference='SilentlyContinue'; Install-Module Az -AllowClobber -RequiredVersion '${AZ_PWSH_VER}' -Repository PSGallery -Force -Scope AllUsers"
-ARG AZ_SYNAPSE_VER=0.11.0
+ARG AZ_SYNAPSE_VER=0.8.0
 RUN pwsh -noni -c "\$ProgressPreference='SilentlyContinue'; Install-Module Az.Synapse -AllowClobber -RequiredVersion '${AZ_SYNAPSE_VER}' -Repository PSGallery -Force -Scope AllUsers"
 
 # Install Corvus.Deployment module
 ADD module /usr/local/share/powershell/Modules/Corvus.Deployment
+
+# Install Bicep so it is available via azure-cli and system path
+ARG AZ_BICEP_VER=v0.4.63
+RUN az bicep install --version $AZ_BICEP_VER \
+    && mv /root/.azure/bin/bicep /usr/local/bin/bicep \
+    && chmod 755 /usr/local/bin/bicep \
+    && ln -s /usr/local/bin/bicep /root/.azure/bin/bicep
 
 # Default to non-root user
 RUN useradd -c 'corvus.deployment user' -m -d /home/corvus -s /bin/bash corvus
 USER corvus
 ENV HOME /home/corvus
 
-# Bicep installs into the user folder
-ARG AZ_BICEP_VER=v0.3.255
-RUN az bicep install --version $AZ_BICEP_VER
-
 WORKDIR /home/corvus
+
+# Make Bicep visible to azure-cli when running as the non-root user
+RUN mkdir -p .azure/bin \
+    && ln -s /usr/local/bin/bicep .azure/bin/bicep
