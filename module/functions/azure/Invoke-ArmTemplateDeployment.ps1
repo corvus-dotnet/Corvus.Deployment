@@ -79,7 +79,8 @@ function Invoke-ArmTemplateDeployment
         [string] $StagingStorageAccountName,
         [string] $StorageResourceGroupName = "arm-deploy-staging-$Location",
         [string] $ArtifactsLocationName = '_artifactsLocation',
-        [string] $ArtifactsLocationSasTokenName = '_artifactsLocationSasToken'
+        [string] $ArtifactsLocationSasTokenName = '_artifactsLocationSasToken',
+        [string] $BicepVersion = "0.4.63"
     )
 
     $OptionalParameters = @{}
@@ -87,17 +88,8 @@ function Invoke-ArmTemplateDeployment
     # Check whether we have a valid AzPowerShell connection
     _EnsureAzureConnection -AzPowerShell -ErrorAction Stop | Out-Null
 
-    # ensure Bicep cli is installed and available to Az.PowerShell, if needed
     if ($ArmTemplatePath.ToLower().EndsWith(".bicep")) {
-        if (!(Get-Command bicep -ErrorAction SilentlyContinue)) {
-            Write-Host "Bootstrapping Bicep cli tool..."
-            & az bicep install --version v0.3.539 | Out-String | Write-Verbose
-            & az bicep version | Out-String | Write-Verbose
-            $bicepPath = [IO.Path]::Join($env:HOME, ".azure", "bin")
-            $env:PATH = "$($env:PATH){0}$bicepPath" -f [IO.Path]::PathSeparator
-            # verify the install
-            Get-Command bicep | Select-Object -ExpandProperty Path | Out-String | Write-Verbose
-        }
+        _ensureBicepCliVersionInPath
     }
 
     # For single ARM template scenarios, ignore the staging functionality
@@ -187,4 +179,39 @@ function Invoke-ArmTemplateDeployment
     }
 
     return $DeploymentResult
+}
+
+function _ensureBicepCliVersionInPath
+{
+    Write-Verbose "Required Bicep version is v$BicepVersion"
+    # Az.PowerShell expects to find the Bicep CLI via the PATH environment variable
+    $existingBicepCommand = Get-Command bicep -ErrorAction SilentlyContinue
+    if ($existingBicepCommand) {
+        # Check the version currently installed
+        $existingBicepCommandVersion = "{0}.{1}.{2}" -f $existingBicepCommand.Version.Major,
+                                                        $existingBicepCommand.Version.Minor,
+                                                        $existingBicepCommand.Version.Build
+        Write-Verbose "Existing installation of Bicep is v$existingBicepCommandVersion"
+    }
+    
+    if ($existingBicepCommandVersion -ne $BicepVersion) {
+        # If the installed version is not what we need, then we:
+        #   1) fallback to using the mechanism in the Azure CLI to install Bicep
+        #   2) insert that path to the front the PATH environment variable, so it is used ahead of any existing version
+
+        # Check whether Azure CLI has prevoiusly installed the required version
+        $existingAzCliBicepVersion = "$(az bicep version)"
+        Write-Verbose "az bicep version: $existingAzCliBicepVersion"
+        if ($existingAzCliBicepVersion.IndexOf("Bicep CLI version $BicepVersion") -lt 0) {
+            Write-Verbose "Installing Bicep CLI tool via Azure CLI"
+            & az bicep install --version "v$BicepVersion" | Out-String | Write-Verbose
+            & az bicep version | Out-String | Write-Verbose
+        }
+
+        # Update the PATH to ensure the Azure CLI copy of Bicep CLI is used by Az.PowerShell
+        $bicepPath = [IO.Path]::Join($env:HOME, ".azure", "bin")
+        $env:PATH = "$bicepPath{0}$($env:PATH){0}" -f [IO.Path]::PathSeparator
+        # verify the install
+        Get-Command bicep | Select-Object -ExpandProperty Path | Out-String | Write-Verbose
+    }
 }
