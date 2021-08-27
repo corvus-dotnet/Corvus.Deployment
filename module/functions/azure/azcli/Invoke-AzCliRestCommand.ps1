@@ -16,7 +16,7 @@ The Uri of the request to be invoked.
 The REST method of the request to be invoked.
 
 .PARAMETER Body
-The body of the request to be invoked.
+The body of the request to be invoked, represented as a hashtable or an array of hashtables.
 
 .PARAMETER BodyFilePath
 The path to the file containing the body of the request to be invoked.
@@ -50,7 +50,7 @@ function Invoke-AzCliRestCommand
         [string] $Method = "GET",
         
         [Parameter(ParameterSetName = 'Body as hashtable')]
-        [hashtable] $Body,
+        $Body,
 
         [Parameter(Mandatory = $true, ParameterSetName = 'Body as file')]
         [string] $BodyFilePath,
