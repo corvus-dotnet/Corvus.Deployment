@@ -80,7 +80,7 @@ function Invoke-ArmTemplateDeployment
         [string] $StorageResourceGroupName = "arm-deploy-staging-$Location",
         [string] $ArtifactsLocationName = '_artifactsLocation',
         [string] $ArtifactsLocationSasTokenName = '_artifactsLocationSasToken',
-        [string] $BicepVersion = "0.4.63"
+        [string] $BicepVersion = "0.4.613"
     )
 
     $OptionalParameters = @{}
