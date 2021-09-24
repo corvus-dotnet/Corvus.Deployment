@@ -87,7 +87,12 @@ function Invoke-AzCliRestCommand
     if (@("PUT", "POST", "PATCH") -contains $Method) {
         switch ($PSCmdlet.ParameterSetName) {
             "Body as hashtable" {
-                $bodyAsJson = (ConvertTo-Json $Body -Depth 30 -Compress).replace('"', '\"').replace(':\', ': \').replace("'", "''")
+                if ($Body -is [hashtable] -or ($Body -is [array] -and $Body[0] -is [hashtable])) {
+                    $bodyAsJson = (ConvertTo-Json $Body -Depth 100 -Compress).replace('"', '\"').replace(':\', ': \').replace("'", "''")
+                }
+                else {
+                    throw "The -Body parameter must be of type [hashtable] or [hashtable[]]"
+                }
                 break
             }
             "Body as file" {
