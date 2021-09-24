@@ -16,7 +16,7 @@ The Uri of the request to be invoked.
 The REST method of the request to be invoked.
 
 .PARAMETER Body
-The body of the request to be invoked.
+The body of the request to be invoked, represented as a hashtable or an array of hashtables.
 
 .PARAMETER BodyFilePath
 The path to the file containing the body of the request to be invoked.
@@ -50,7 +50,7 @@ function Invoke-AzCliRestCommand
         [string] $Method = "GET",
         
         [Parameter(ParameterSetName = 'Body as hashtable')]
-        [hashtable] $Body,
+        $Body,
 
         [Parameter(Mandatory = $true, ParameterSetName = 'Body as file')]
         [string] $BodyFilePath,
@@ -87,7 +87,12 @@ function Invoke-AzCliRestCommand
     if (@("PUT", "POST", "PATCH") -contains $Method) {
         switch ($PSCmdlet.ParameterSetName) {
             "Body as hashtable" {
-                $bodyAsJson = (ConvertTo-Json $Body -Depth 30 -Compress).replace('"', '\"').replace(':\', ': \').replace("'", "''")
+                if ($Body -is [hashtable] -or ($Body -is [array] -and $Body[0] -is [hashtable])) {
+                    $bodyAsJson = (ConvertTo-Json $Body -Depth 100 -Compress).replace('"', '\"').replace(':\', ': \').replace("'", "''")
+                }
+                else {
+                    throw "The -Body parameter must be of type [hashtable] or [hashtable[]]"
+                }
                 break
             }
             "Body as file" {
