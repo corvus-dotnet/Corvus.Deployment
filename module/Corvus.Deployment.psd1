@@ -93,7 +93,7 @@ PrivateData = @{
         # Tags = @()
 
         # A URL to the license for this module.
-        LicenseUri = 'https://github.com/corvus-dotnet/Corvus.Deployment/blob/master/LICENSE'
+        LicenseUri = 'https://github.com/corvus-dotnet/Corvus.Deployment/blob/main/LICENSE'
 
         # A URL to the main website for this project.
         ProjectUri = 'https://github.com/corvus-dotnet/Corvus.Deployment'
