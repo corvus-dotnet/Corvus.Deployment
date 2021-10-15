@@ -16,7 +16,6 @@ branches:
     source-branches:
     - develop
     - master
-    - main
     - release
     - feature
     - support
