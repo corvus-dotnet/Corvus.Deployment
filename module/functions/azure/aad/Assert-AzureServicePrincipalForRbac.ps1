@@ -4,19 +4,26 @@
 
 <#
 .SYNOPSIS
-Ensures that a suitable Azure AD application & service principal exists, creating if necessary.
+Ensures that an Azure AD service principal exists, creating if necessary.  Optionally storing the credential
+in Azure Key Vault.
 
 .DESCRIPTION
-Ensures that a suitable Azure AD application & service principal exists.  Uses the Azure CLI to create
-it if necessary.
+Ensures that a suitable Azure AD application & service principal exists.  Optionally storing the credential
+in Azure Key Vault.
 
 .PARAMETER Name
-The display name of the Azure AD identity.
+The display name of the Azure AD service principal.
+
+.PARAMETER KeyVaultName
+The key vault where that service principal password will be stored.
+
+.PARAMETER KeyVaultSecretName
+The key vault secret name that service principal password will be stored in.
 
 .OUTPUTS
-Returns a tuple containing a hashtable representing the JSON object describing the Azure AD service principal and
-it's client secret. Where the client secret is not avilablae (e.g. the identity aleady exists) $null will be returned
-for this element.
+Returns a tuple containing a hashtable representing the object describing the Azure AD service principal and
+it's client secret. Where the client secret is not avilable (e.g. the service principal aleady exists) or the 
+Key Vault functionality is used, '$null' will be returned for this element.
 
 e.g.
 @(
@@ -30,45 +37,49 @@ function Assert-AzureServicePrincipalForRbac
 {
     [CmdletBinding(SupportsShouldProcess)]
     param (
-        [Parameter(Mandatory=$true)]
-        [string] $Name
+        [Parameter(Mandatory = $true)]
+        [string] $Name,
+        
+        [Parameter(ParameterSetName = 'KeyVault',
+                    Mandatory = $true)]
+        [string] $KeyVaultName,
+
+        [Parameter(ParameterSetName = 'KeyVault',
+                    Mandatory = $true)]
+        [string] $KeyVaultSecretName
+
     )
 
-    _EnsureAzureConnection -AzureCli | Out-Null
+    _EnsureAzureConnection -AzPowerShell | Out-Null
 
     $spSecret = $null
-    $checkSpArgs = @(
-        "ad sp list"
-        "--display-name $Name"
-    )
-    $existingSp = Invoke-AzCli $checkSpArgs -asJson
+    $existingSp = Get-AzADServicePrincipal -DisplayName $Name
 
     if (!$existingSp) {
-        # create a new service principal
-        Write-Host "Registering new SPN"
-        $newSpArgs = @(
-            "ad sp create-for-rbac"
-            "-n $Name"
-            "--skip-assignment"
-        )
         if ($PSCmdlet.ShouldProcess($Name, "Create Service Principal")) {
-            $newSp = Invoke-AzCli $newSpArgs -asJson
-            Write-Host ("Complete - ApplicationId={1}" -f $Name, $newSp.appId)
-            $spSecret = $newSp.password
-        
-            $checkNewSpArgs = @(
-                "ad sp list"
-                "--display-name $Name"
-            )
-            $existingSp = Invoke-AzCli $checkNewSpArgs -asJson
-            if (!$existingSp) {
-                throw "Unexpected error - the newly created service principal '$Name' could not be found"
+
+            # Create a new service principal
+            $newSp = New-AzADServicePrincipal -DisplayName $Name
+            Write-Host ("Complete - ObjectId={0},ApplicationId={1}" -f $newSp.Id, $newSp.AppId)
+            
+            # do the required credential handling
+            if ($PSCmdlet.ParameterSetName -eq "KeyVault") {
+                # Store the secret in key vault
+                Set-AzKeyVaultSecret -VaultName $KeyVaultName `
+                                     -Name $KeyVaultSecretName `
+                                     -SecretValue ($newSp.PasswordCredentials.SecretText | ConvertTo-SecureString -AsPlainText -Force) `
+                                     -ContentType "text/plain" `
+                    | Out-Null
+            }
+            else {
+                # retain previous behaviour
+                $spSecret = $newSp.PasswordCredentials.SecretText
             }
         }
     }
     else {
-        Write-Host ("SPN '{0}' already exists - skipping" -f $existingSp.appDisplayName)
+        Write-Host ("Service Principal '{0}' already exists - skipping [ObjectId={1},ApplicationId={2}]" -f $existingSp.AppDisplayName, $existingSp.Id, $existingSp.AppId)
     }
 
-    return $existingSp,$spSecret
+    return ($existingSp ? $existingSp : $newSp),$spSecret
 }
