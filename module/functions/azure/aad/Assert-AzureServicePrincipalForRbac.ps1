@@ -52,6 +52,20 @@ function Assert-AzureServicePrincipalForRbac
 
     _EnsureAzureConnection -AzPowerShell | Out-Null
 
+    # Handle Azure Graph -> MS Graph transition
+    # Breaking change to property names between v4 and v5 of the module
+    $useMsGraph = $true
+    $azResourcesModule = Import-Module Az.Resources -PassThru -Verbose:$false
+    if ($azResourcesModule.Version.Major -gt 4) {
+        Write-Verbose "Using Microsoft Graph"
+        $appIdPropertyName = "AppId"
+    }
+    else {
+        Write-Verbose "Using Azure Graph"
+        $appIdPropertyName = "ApplicationId"
+        $useMsGraph = $false
+    }
+
     $spSecret = $null
     $existingSp = Get-AzADServicePrincipal -DisplayName $Name
 
@@ -59,26 +73,43 @@ function Assert-AzureServicePrincipalForRbac
         if ($PSCmdlet.ShouldProcess($Name, "Create Service Principal")) {
 
             # Create a new service principal
-            $newSp = New-AzADServicePrincipal -DisplayName $Name
-            Write-Host ("Complete - ObjectId={0},ApplicationId={1}" -f $newSp.Id, $newSp.AppId)
+            $createParams = @{
+                DisplayName = $Name
+            }
+            if (!$useMsGraph) {
+                $createParams += @{ SkipAssignment = $true }
+            }
+            $newSp = New-AzADServicePrincipal @createParams
+            Write-Host ("Complete - ObjectId={0},ApplicationId={1}" -f $newSp.Id, $newSp.$appIdPropertyName)
+
+            if ($useMsGraph) {
+                $spCredential = $newSp.PasswordCredentials.SecretText | ConvertTo-SecureString -AsPlainText -Force
+            }
+            else {
+                $spCredential = $newSp.Secret
+            }
             
-            # do the required credential handling
+            # Do the required credential handling
             if ($PSCmdlet.ParameterSetName -eq "KeyVault") {
                 # Store the secret in key vault
+                Write-Host "Storing service principal secret in key vault '$KeyVaultName' as the secret '$KeyVaultSecretName'"
                 Set-AzKeyVaultSecret -VaultName $KeyVaultName `
                                      -Name $KeyVaultSecretName `
-                                     -SecretValue ($newSp.PasswordCredentials.SecretText | ConvertTo-SecureString -AsPlainText -Force) `
+                                     -SecretValue $spCredential `
                                      -ContentType "text/plain" `
                     | Out-Null
             }
             else {
-                # retain previous behaviour
-                $spSecret = $newSp.PasswordCredentials.SecretText
+                # retain previous behaviour of simply returning the password
+                $spSecret = ConvertFrom-SecureString $spCredential -AsPlainText
             }
         }
     }
     else {
-        Write-Host ("Service Principal '{0}' already exists - skipping [ObjectId={1},ApplicationId={2}]" -f $existingSp.AppDisplayName, $existingSp.Id, $existingSp.AppId)
+        Write-Host ("Service Principal '{0}' already exists - skipping [ObjectId={1},ApplicationId={2}]" -f `
+                            $Name,
+                            $existingSp.Id,
+                            $existingSp.$appIdPropertyName)
     }
 
     return ($existingSp ? $existingSp : $newSp),$spSecret
