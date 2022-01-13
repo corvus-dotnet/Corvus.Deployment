@@ -42,6 +42,9 @@ function Assert-AzureServicePrincipalForRbac
     param (
         [Parameter(Mandatory = $true)]
         [string] $Name,
+
+        [Parameter()]
+        [int] $PasswordLifetimeDays = 365,
         
         [Parameter(ParameterSetName = 'KeyVault',
                     Mandatory = $true)]
@@ -63,20 +66,26 @@ function Assert-AzureServicePrincipalForRbac
             $ServicePrincipal
         )
 
-        # Generate a service principal secret
-        $spCred = $ServicePrincipal | New-AzADServicePrincipalCredential
+        # Generate a new service principal secret
+        $spCred = $ServicePrincipal | New-AzADServicePrincipalCredential -EndDate ([DateTime]::Now.AddDays($PasswordLifetimeDays))
 
-        # get the secret from the credential object, based on which graph API we're using
-        $spCredential = $useMsGraph `
-                                ? ($spCred.SecretText | ConvertTo-SecureString -AsPlainText -Force) `
-                                : $spCred.Secret
+        # Get the secret from the credential object, based on which graph API we're using
+        $spAddId = $useMsGraph ? $ServicePrincipal.AppId : $ServicePrincipal.ApplicationId
+        $spPassword = $useMsGraph `
+                            ? $spCred.SecretText `
+                            : ($spCred.Secret | ConvertFrom-SecureString -AsPlainText)
 
         if ($useKeyVault) {
+            $spLoginDetails = @{
+                appId = $spAddId
+                password = $spPassword
+                tenant = (Get-AzContext).Tenant.Id
+            }
             Write-Host "Storing service principal secret in key vault [VaultName=$KeyVaultName, SecretName=$KeyVaultSecretName]"
             Set-AzKeyVaultSecret -VaultName $KeyVaultName `
-                                -Name $KeyVaultSecretName `
-                                -SecretValue $spCredential `
-                                -ContentType "text/plain" `
+                                 -Name $KeyVaultSecretName `
+                                 -SecretValue ($spLoginDetails | ConvertTo-Json | ConvertTo-SecureString -AsPlainText -Force) `
+                                 -ContentType "text/plain" `
                 | Out-Null
 
             return $null
@@ -120,7 +129,10 @@ function Assert-AzureServicePrincipalForRbac
             }
             $newSp = New-AzADServicePrincipal @createParams
             Write-Host ("Created service principal [ObjectId={0}, ApplicationId={1}]" -f $newSp.Id, $newSp.$appIdPropertyName)
-
+            
+            # Delete the default credential
+            Get-AzADServicePrincipalCredential -DisplayName $Name | Remove-AzADServicePrincipalCredential
+            # Setup the credential and store it in key vault, if necessary
             $spSecret = _handleCredential $newSp
         }
     }
@@ -135,6 +147,7 @@ function Assert-AzureServicePrincipalForRbac
             $existingSecret = Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $KeyVaultSecretName
         }
 
+        # rotate the secret
         if (($useKeyVault -and !$existingSecret) -or $RotateSecret) {
             if ($PSCmdlet.ShouldProcess($Name, "Rotate Service Principal Secret")) {
                 Write-Host "Rotating service principal credential [UseKeyVault=$useKeyVault, KeyVaultSecretMissing=$(!$existingSecret), RotateFlag=$RotateSecret]"
