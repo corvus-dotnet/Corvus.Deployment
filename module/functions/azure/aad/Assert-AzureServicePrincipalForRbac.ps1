@@ -85,7 +85,7 @@ function Assert-AzureServicePrincipalForRbac
             Set-AzKeyVaultSecret -VaultName $KeyVaultName `
                                  -Name $KeyVaultSecretName `
                                  -SecretValue ($spLoginDetails | ConvertTo-Json | ConvertTo-SecureString -AsPlainText -Force) `
-                                 -ContentType "text/plain" `
+                                 -ContentType "application/json" `
                 | Out-Null
 
             return $null
