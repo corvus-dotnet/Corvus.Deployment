@@ -58,7 +58,7 @@ Microsoft.Azure.Commands.ResourceManager.Cmdlets.SdkModels.PSResourceGroupDeploy
 #>
 function Invoke-ArmTemplateDeployment
 {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess)]
     param
     (
         [Parameter(Mandatory=$true)]
@@ -80,7 +80,8 @@ function Invoke-ArmTemplateDeployment
         [string] $StorageResourceGroupName = "arm-deploy-staging-$Location",
         [string] $ArtifactsLocationName = '_artifactsLocation',
         [string] $ArtifactsLocationSasTokenName = '_artifactsLocationSasToken',
-        [string] $BicepVersion = "0.4.613"
+        [string] $BicepVersion = "0.4.1124",
+        [int] $MaxRetries = 3
     )
 
     $OptionalParameters = @{}
@@ -131,7 +132,6 @@ function Invoke-ArmTemplateDeployment
 
     # Deploy the ARM template with a built-in retry loop to try and limit the disruption from spurious ARM errors
     $retries = 1
-    $maxRetries = 3
     $DeploymentResult = $null
     $success = $false
 
@@ -140,7 +140,7 @@ function Invoke-ArmTemplateDeployment
         $argsForDeployType += @{ Force = $True }
     }
 
-    while (!$success -and $retries -le $maxRetries) {
+    while (!$success -and $retries -le $MaxRetries) {
         if ($retries -gt 1) { Write-Host "Waiting 30secs before retry..."; Start-Sleep -Seconds 30 }
 
         # $ErrorMessages = $null
@@ -155,7 +155,8 @@ function Invoke-ArmTemplateDeployment
                                         @argsForDeployType `
                                         @OptionalParameters `
                                         @TemplateParameters `
-                                        -Verbose
+                                        -Verbose `
+                                        -WhatIf:$WhatIfPreference
 
             # The template deployed successfully, drop out of retry loop
             $success = $true
@@ -169,11 +170,11 @@ function Invoke-ArmTemplateDeployment
                 Write-Host "Invalid ARM template error detected - skipping retries"
                 throw $_
             }
-            elseif ($retries -ge $maxRetries) {
+            elseif ($retries -ge $MaxRetries) {
                 Write-Host "Unable to deploy ARM template - retry attempts exceeded"
                 throw $_
             }
-            Write-Host ("Attempt {0}/{1} failed: {2}" -f $retries, $maxRetries, $_.Exception.Message)
+            Write-Host ("Attempt {0}/{1} failed: {2}" -f $retries, $MaxRetries, $_.Exception.Message)
             $retries++
         }
     }
