@@ -31,6 +31,9 @@ function Assert-AzureAdAppForAppService
         [string] $AppId
     )
 
+    # Check whether we have a valid AzPowerShell connection
+    _EnsureAzureConnection -AzPowerShell -ErrorAction Stop
+    
     if ( !(Test-AzureGraphAccess) ) {
         if (-not $AppId) {
             Write-Error "AppId for $AppName was not supplied and access to the Azure AD graph is not available. Either run this in a context where graph access is available, or pass this app id in as an argument." 

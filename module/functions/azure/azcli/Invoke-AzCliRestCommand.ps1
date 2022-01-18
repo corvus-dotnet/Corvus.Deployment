@@ -16,7 +16,10 @@ The Uri of the request to be invoked.
 The REST method of the request to be invoked.
 
 .PARAMETER Body
-The body of the request to be invoked.
+The body of the request to be invoked, represented as a hashtable or an array of hashtables.
+
+.PARAMETER BodyFilePath
+The path to the file containing the body of the request to be invoked.
 
 .PARAMETER Headers
 The HTTP headers required by the request to be invoked.  The "Content-Type" header will be automatically added if missing:
@@ -35,22 +38,29 @@ The JSON output from the underlying azure-cli command, in hashtable format.
 
 function Invoke-AzCliRestCommand
 {
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName = 'Body as hashtable')]
     param (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true, ParameterSetName = 'Body as hashtable')]
+        [Parameter(Mandatory = $true, ParameterSetName = 'Body as file')]
         [string] $Uri,
         
-        [Parameter()]
+        [Parameter(ParameterSetName = 'Body as hashtable')]
+        [Parameter(ParameterSetName = 'Body as file')]
         [ValidateSet("DELETE", "GET", "PATCH", "POST", "PUT")]
         [string] $Method = "GET",
         
-        [Parameter()]
-        [hashtable] $Body,
+        [Parameter(ParameterSetName = 'Body as hashtable')]
+        $Body,
+
+        [Parameter(Mandatory = $true, ParameterSetName = 'Body as file')]
+        [string] $BodyFilePath,
         
-        [Parameter()]
+        [Parameter(ParameterSetName = 'Body as hashtable')]
+        [Parameter(ParameterSetName = 'Body as file')]
         [hashtable] $Headers = @{},
 
-        [Parameter()]
+        [Parameter(ParameterSetName = 'Body as hashtable')]
+        [Parameter(ParameterSetName = 'Body as file')]
         [string] $ResourceForAuth
     )
 
@@ -75,10 +85,25 @@ function Invoke-AzCliRestCommand
 
     # Additional arguments for methods with body semantics
     if (@("PUT", "POST", "PATCH") -contains $Method) {
-        $bodyAsEscapedJsonString = (ConvertTo-Json $Body -Depth 30 -Compress).replace('"', '\"').replace(':\', ': \').replace("'", "''")
+        switch ($PSCmdlet.ParameterSetName) {
+            "Body as hashtable" {
+                if ($Body -is [hashtable] -or ($Body -is [array] -and $Body[0] -is [hashtable])) {
+                    $bodyAsJson = (ConvertTo-Json $Body -Depth 100 -Compress).replace('"', '\"').replace(':\', ': \').replace("'", "''")
+                }
+                else {
+                    throw "The -Body parameter must be of type [hashtable] or [hashtable[]]"
+                }
+                break
+            }
+            "Body as file" {
+                $bodyAsJson = "@$BodyFilePath"
+                break
+            }
+        }
+        
         $headersAsEscapedJsonString = (ConvertTo-Json $Headers -Compress).replace('"', '\"').replace(':\', ': \').replace("'", "''")
 
-        $cmdParts += "--body '$bodyAsEscapedJsonString'"
+        $cmdParts += "--body '$bodyAsJson'"
         $cmdParts += "--headers '$headersAsEscapedJsonString'"
     }
 

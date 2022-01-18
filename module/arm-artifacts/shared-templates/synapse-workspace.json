@@ -145,6 +145,23 @@
     "defaultSparkPoolAutoPauseDelayMinutes": {
       "type": "int",
       "defaultValue": 15
+    },
+    "synapsePrivateEndpointSubnetResourceId": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "synapsePrivateEndpointServices": {
+      "type": "array",
+      "defaultValue": [],
+      "allowedValues": [
+        "Dev",
+        "Sql",
+        "SqlOnDemand"
+      ] 
+    },
+    "workspaceRepositoryConfiguration": {
+      "type": "object",
+      "defaultValue": {}
     }
   },
   "variables": {
@@ -152,9 +169,9 @@
     "storageBlobDataContributorRoleID": "ba92f5b4-2d11-453d-a403-e96b0029c9fe",
     "defaultDataLakeStorageAccountUrl": "[concat('https://', parameters('defaultDataLakeStorageAccountName'), '.dfs.core.windows.net')]",
     "defaultDataLakeStorageDeployName": "[concat(deployment().name, '-defsa')]",
-    "synapseManagedIdentityRoleAssignmentId": "[guid(concat(resourceGroup().id, '/', variables('storageBlobDataContributorRoleID'), '/', parameters('workspaceName'), '/', 'synapse-managed-identity'))]",
-    "datalakeContributorRoleAssignmentId": "[guid(concat(resourceGroup().id, '/', variables('storageBlobDataContributorRoleID'), '/', parameters('datalakeContributorGroupId'), '/', 'datalake-contributor-group'))]",
-    "defaultDataLakeStorageResourceReaderRoleAssignmentId": "[guid(concat(resourceGroup().id, '/', variables('readerRoleID'), '/', parameters('datalakeContributorGroupId'), '/', 'datalake-contributor-group'))]",
+    "synapseManagedIdentityRoleAssignmentIdBaseEntropy": "[concat(resourceGroup().id, '/', parameters('defaultDataLakeStorageAccountName'), '/', variables('storageBlobDataContributorRoleID'), '/', parameters('workspaceName'))]",
+    "defaultDatalakeDataContributorRoleAssignmentId": "[guid(concat(resourceGroup().id, '/', parameters('defaultDataLakeStorageAccountName'), '/', variables('storageBlobDataContributorRoleID'), '/', parameters('datalakeContributorGroupId'), '/', 'datalake-contributor-group'))]",
+    "defaultDatalakeResourceReaderRoleAssignmentId": "[guid(concat(resourceGroup().id, '/', parameters('defaultDataLakeStorageAccountName'), '/', variables('readerRoleID'), '/', parameters('datalakeContributorGroupId'), '/', 'datalake-contributor-group'))]",
     "defaultSparkPoolNameSafe": "[if(equals(parameters('defaultSparkPoolName'),''), 'not-required', parameters('defaultSparkPoolName'))]",
     "localTags": {
       "displayName": "[parameters('workspaceName')]"
@@ -176,7 +193,8 @@
           "filesystem": "[parameters('defaultDataLakeStorageFilesystemName')]"
         },
         "adlaResourceId": "[parameters('adlaResourceId')]",
-        "managedVirtualNetwork": "[parameters('managedVirtualNetwork')]"
+        "managedVirtualNetwork": "[parameters('managedVirtualNetwork')]",
+        "workspaceRepositoryConfiguration": "[parameters('workspaceRepositoryConfiguration')]"
       },
       "resources": [
         {
@@ -261,6 +279,97 @@
       "tags": "[variables('tags')]"
     },
     {
+      "condition": "[not(empty(parameters('synapsePrivateEndpointServices')))]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-10-01",
+      "name": "[concat(deployment().name, '-private-endpoints')]",
+      "dependsOn": [
+        "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
+      ],
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "synapsePrivateEndpointSubnetResourceId": {
+            "value": "[parameters('synapsePrivateEndpointSubnetResourceId')]"
+          },
+          "synapsePrivateEndpointServices": {
+            "value": "[parameters('synapsePrivateEndpointServices')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "workspaceName": {
+            "value": "[parameters('workspaceName')]"
+          },
+          "tags": {
+            "value": "[parameters('tagValues')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "synapsePrivateEndpointSubnetResourceId": {
+              "type": "string"
+            },
+            "synapsePrivateEndpointServices": {
+              "type": "array",
+              "allowedValues": [
+                "Dev",
+                "Sql",
+                "SqlOnDemand"
+              ]
+            },
+            "workspaceName": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            }
+          },
+          "variables": {
+            "privateEndpointBaseName": "[concat('private-endpoint-synapse-', parameters('workspaceName'))]",
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/privateEndpoints",
+              "apiVersion": "2020-06-01",
+              "name": "[toLower(concat(variables('privateEndpointBaseName'), '-', parameters('synapsePrivateEndpointServices')[copyIndex()]))]",
+              "copy": {
+                "name": "endpointCopy",
+                "count": "[length(parameters('synapsePrivateEndpointServices'))]"
+              },
+              "location": "[parameters('location')]",
+              "properties": {
+                "subnet": {
+                  "id": "[parameters('synapsePrivateEndpointSubnetResourceId')]"
+                },
+                "privateLinkServiceConnections": [
+                  {
+                    "name": "[toLower(concat(variables('privateEndpointBaseName'), '-', parameters('synapsePrivateEndpointServices')[copyIndex()]))]",
+                    "properties": {
+                      "privateLinkServiceId": "[resourceId('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]",
+                      "groupIds": [
+                        "[parameters('synapsePrivateEndpointServices')[copyIndex()]]"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "tags": "[parameters('tags')]"
+            }
+          ]
+        }
+      }
+    },
+    {
       "condition": "[parameters('setWorkspaceIdentityRbacOnStorageAccount')]",
       "apiVersion": "2019-05-01",
       "name": "storageRoleDeploymentResource",
@@ -281,7 +390,7 @@
             {
               "type": "Microsoft.Storage/storageAccounts/providers/roleAssignments",
               "apiVersion": "2018-09-01-preview",
-              "name": "[concat(parameters('defaultDataLakeStorageAccountName'), '/Microsoft.Authorization/', variables('synapseManagedIdentityRoleAssignmentId'))]",
+              "name": "[concat(parameters('defaultDataLakeStorageAccountName'), '/Microsoft.Authorization/', guid(concat(variables('synapseManagedIdentityRoleAssignmentIdBaseEntropy'), '/', reference(concat('Microsoft.Synapse/workspaces/', parameters('workspaceName')), '2019-06-01-preview', 'Full').identity.principalId)))]",
               "location": "[parameters('storageLocation')]",
               "properties": {
                 "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('storageBlobDataContributorRoleID'))]",
@@ -293,7 +402,7 @@
               "condition": "[parameters('setSbdcRbacOnStorageAccount')]",
               "type": "Microsoft.Storage/storageAccounts/providers/roleAssignments",
               "apiVersion": "2018-09-01-preview",
-              "name": "[concat(parameters('defaultDataLakeStorageAccountName'), '/Microsoft.Authorization/', variables('datalakeContributorRoleAssignmentId'))]",
+              "name": "[concat(parameters('defaultDataLakeStorageAccountName'), '/Microsoft.Authorization/', variables('defaultDatalakeDataContributorRoleAssignmentId'))]",
               "properties": {
                 "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('storageBlobDataContributorRoleID'))]",
                 "principalId": "[parameters('datalakeContributorGroupId')]",
@@ -304,7 +413,7 @@
               "condition": "[parameters('setSbdcRbacOnStorageAccount')]",
               "type": "Microsoft.Storage/storageAccounts/providers/roleAssignments",
               "apiVersion": "2018-09-01-preview",
-              "name": "[concat(parameters('defaultDataLakeStorageAccountName'), '/Microsoft.Authorization/', variables('defaultDataLakeStorageResourceReaderRoleAssignmentId'))]",
+              "name": "[concat(parameters('defaultDataLakeStorageAccountName'), '/Microsoft.Authorization/', variables('defaultDatalakeResourceReaderRoleAssignmentId'))]",
               "properties": {
                 "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('readerRoleId'))]",
                 "principalId": "[parameters('datalakeContributorGroupId')]",

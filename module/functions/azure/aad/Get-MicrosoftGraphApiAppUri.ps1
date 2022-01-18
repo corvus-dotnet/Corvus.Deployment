@@ -1,4 +1,4 @@
-# <copyright file="Get-AzureAdGraphApiAppUri.ps1" company="Endjin Limited">
+# <copyright file="Get-MicrosoftGraphApiAppUri.ps1" company="Endjin Limited">
 # Copyright (c) Endjin Limited. All rights reserved.
 # </copyright>
 
@@ -13,9 +13,9 @@ Derives URI needed to retrieve the specified AzureAD application from the AzureA
 The AzureAD application object.
 
 .OUTPUTS
-The AzureAD Graph REST API request URI as a string.
+The Microsoft Graph REST API request URI as a string.
 #>
-function Get-AzureAdGraphApiAppUri
+function Get-MicrosoftGraphApiAppUri
 {
     [CmdletBinding()]
     param
@@ -24,7 +24,7 @@ function Get-AzureAdGraphApiAppUri
         [Microsoft.Azure.Commands.ActiveDirectory.PSADApplication] $App
     )
 
-    $graphApiAppUri = ("https://graph.windows.net/{0}/applications/{1}?api-version=1.6" -f $script:moduleContext.AadTenantId, $App.ObjectId)
+    $graphApiAppUri = ("https://graph.microsoft.com/v1.0/{0}/applications/{1}" -f $script:moduleContext.AadTenantId, $App.ObjectId)
 
     return $graphApiAppUri
 }

@@ -12,6 +12,9 @@ creating the target resource group (if necessary) and invoking the deployment of
 
 Also provides support for retries for any errors not caused by 'InvalidTemplate' exceptions.
 
+.PARAMETER DeploymentScope
+The target scope of the ARM deployment (e.g. Resource Group, Subscription, Tenant)
+
 .PARAMETER ResourceGroupName
 The name of the target resource group.
 
@@ -55,17 +58,19 @@ Microsoft.Azure.Commands.ResourceManager.Cmdlets.SdkModels.PSResourceGroupDeploy
 #>
 function Invoke-ArmTemplateDeployment
 {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess)]
     param
     (
-        [Parameter(Mandatory=$true)]
-        [string] $ResourceGroupName,
-
         [Parameter(Mandatory=$true)]
         [string] $Location,
 
         [Parameter(Mandatory=$true)]
         [string] $ArmTemplatePath,
+
+        [ValidateSet("ResourceGroup","Subscription","ManagementGroup","Tenant")]
+        [string] $DeploymentScope = "ResourceGroup",
+
+        [string] $ResourceGroupName,
 
         [Hashtable] $TemplateParameters = @{},
         [switch] $NoArtifacts,
@@ -74,81 +79,52 @@ function Invoke-ArmTemplateDeployment
         [string] $StagingStorageAccountName,
         [string] $StorageResourceGroupName = "arm-deploy-staging-$Location",
         [string] $ArtifactsLocationName = '_artifactsLocation',
-        [string] $ArtifactsLocationSasTokenName = '_artifactsLocationSasToken'
+        [string] $ArtifactsLocationSasTokenName = '_artifactsLocationSasToken',
+        [string] $BicepVersion = "0.4.1124",
+        [int] $MaxRetries = 3
     )
 
     $OptionalParameters = @{}
 
+    # Check whether we have a valid AzPowerShell connection
+    _EnsureAzureConnection -AzPowerShell -ErrorAction Stop | Out-Null
+
+    if ($ArmTemplatePath.ToLower().EndsWith(".bicep")) {
+        _ensureBicepCliVersionInPath
+    }
+
     # For single ARM template scenarios, ignore the staging functionality
     if (!$NoArtifacts) {
-        if (!$StagingStorageAccountName) {
-            $StagingStorageAccountName = ('stage{0}{1}' -f $Location, ($script:AzContext.Subscription.Id).Replace('-', '').ToLowerInvariant()).SubString(0, 24)
-        }
-        $StorageContainerName = $ResourceGroupName.ToLowerInvariant().Replace(".", "") + '-stageartifacts'
-
-        # Lookup whether the storage account already exists elsewhere in the current subscription
-        $StorageAccount = Get-AzStorageAccount | Where-Object { $_.StorageAccountName -eq $StagingStorageAccountName }
-
-        # Create the storage account if it doesn't already exist
-        if ($null -eq $StorageAccount) {
-            New-AzResourceGroup -Location $Location -Name $StorageResourceGroupName -Force
-            $StorageAccount = New-AzStorageAccount -StorageAccountName $StagingStorageAccountName `
-                                                -Type 'Standard_LRS' `
-                                                -ResourceGroupName $StorageResourceGroupName `
-                                                -Location $Location
-        }
-
-        # Copy files from the local storage staging location to the storage account container
-        New-AzStorageContainer -Name $StorageContainerName -Context $StorageAccount.Context -ErrorAction SilentlyContinue *>&1
-
-        # upload shared linked templates
-        $sharedArtifactFilePaths = Get-ChildItem $SharedArtifactsFolderPath -Recurse -File | ForEach-Object -Process {$_.FullName}
-        foreach ($SourcePath in $sharedArtifactFilePaths) {
-            Set-AzStorageBlobContent `
-                -File $SourcePath `
-                -Blob $SourcePath.Substring($SharedArtifactsFolderPath.length + 1) `
-                -Container $StorageContainerName `
-                -Context $StorageAccount.Context `
-                -Force `
-                -Verbose:$false | Out-Null
-        }
-
-        # upload any additional linked templates
-        if ($AdditionalArtifactsFolderPath) {
-            $additionalArtifactFilePaths = Get-ChildItem $AdditionalArtifactsFolderPath -Recurse -File | ForEach-Object -Process {$_.FullName}
-            foreach ($SourcePath in $additionalArtifactFilePaths) {
-                Set-AzStorageBlobContent `
-                    -File $SourcePath `
-                    -Blob $SourcePath.Substring($AdditionalArtifactsFolderPath.length + 1) `
-                    -Container $StorageContainerName `
-                    -Context $StorageAccount.Context `
-                    -Force `
-                    -Verbose:$false | Out-Null
-            }
-        }
-
-        $OptionalParameters[$ArtifactsLocationName] = $StorageAccount.Context.BlobEndPoint + $StorageContainerName
-        # Generate a 4 hour SAS token for the artifacts location if one was not provided in the parameters file
-        $StagingSasToken = New-AzStorageContainerSASToken `
-                                    -Name $StorageContainerName `
-                                    -Context $StorageAccount.Context `
-                                    -Permission r `
-                                    -ExpiryTime (Get-Date).AddHours(4)
-        $OptionalParameters[$ArtifactsLocationSasTokenName] = ConvertTo-SecureString -AsPlainText -Force $StagingSasToken
+        _DeployArmArtifacts -AdditionalArtifactsFolderPath $AdditionalArtifactsFolderPath `
+                            -SharedArtifactsFolderPath $SharedArtifactsFolderPath `
+                            -StagingStorageAccountName $StagingStorageAccountName `
+                            -StorageResourceGroupName $StorageResourceGroupName `
+                            -ArtifactsLocationName $ArtifactsLocationName `
+                            -ArtifactsLocationSasTokenName $ArtifactsLocationSasTokenName
     }
 
     # Create the resource group only when it doesn't already exist
-    if ( $null -eq (Get-AzResourceGroup -Name $ResourceGroupName -Verbose -ErrorAction SilentlyContinue) ) {
-        New-AzResourceGroup -Name $ResourceGroupName -Location $Location -Verbose -Force -ErrorAction Stop
+    if ( $DeploymentScope -eq "ResourceGroup" -and `
+            $null -eq (Get-AzResourceGroup -Name $ResourceGroupName -Verbose -ErrorAction SilentlyContinue) ) {
+        New-AzResourceGroup -Name $ResourceGroupName -Location $Location -Verbose -Force -ErrorAction Stop | Out-Null
+    }
+
+    # Setup required parameters for the relevant deployment type
+    $argsForDeployType = @{ TemplateFile = $ArmTemplatePath }
+    if ($DeploymentScope -eq "ResourceGroup") {
+        $argsForDeployType += @{ ResourceGroupName = $ResourceGroupName }
+    }
+    else {
+        $argsForDeployType += @{ Location = $Location }
     }
 
     Write-Host "Validating ARM template ($ArmTemplatePath)..."
-    $validationErrors = Test-AzResourceGroupDeployment `
-                        -ResourceGroupName $ResourceGroupName `
-                        -TemplateFile $ArmTemplatePath `
-                        @OptionalParameters `
-                        @TemplateParameters `
-                        -Verbose
+    # Dynamically call the relevant cmdlet for the current deployment type
+    $validationErrors = & "Test-Az$($DeploymentScope)Deployment" `
+                                    @argsForDeployType `
+                                    @OptionalParameters `
+                                    @TemplateParameters `
+                                    -Verbose
     if ($validationErrors) {
         Write-Warning ($validationErrors | Out-String)
         throw "ARM Template validation errors - check previous warnings"
@@ -156,10 +132,15 @@ function Invoke-ArmTemplateDeployment
 
     # Deploy the ARM template with a built-in retry loop to try and limit the disruption from spurious ARM errors
     $retries = 1
-    $maxRetries = 3
     $DeploymentResult = $null
     $success = $false
-    while (!$success -and $retries -le $maxRetries) {
+
+    # DeploymentScope specific args for the actual deployment
+    if ($DeploymentScope -eq "ResourceGroup") {
+        $argsForDeployType += @{ Force = $True }
+    }
+
+    while (!$success -and $retries -le $MaxRetries) {
         if ($retries -gt 1) { Write-Host "Waiting 30secs before retry..."; Start-Sleep -Seconds 30 }
 
         # $ErrorMessages = $null
@@ -168,14 +149,14 @@ function Invoke-ArmTemplateDeployment
                                         $retries
         try {
             Write-Host "Deploying ARM template ($ArmTemplatePath)..."
-            $DeploymentResult = New-AzResourceGroupDeployment `
-                -Name $deployName `
-                -ResourceGroupName $ResourceGroupName `
-                -TemplateFile $ArmTemplatePath `
-                @OptionalParameters `
-                @TemplateParameters `
-                -Force `
-                -Verbose
+            # Dynamically call the relevant cmdlet for the current deployment type
+            $DeploymentResult = & "New-Az$($DeploymentScope)Deployment" `
+                                        -Name $deployName `
+                                        @argsForDeployType `
+                                        @OptionalParameters `
+                                        @TemplateParameters `
+                                        -Verbose `
+                                        -WhatIf:$WhatIfPreference
 
             # The template deployed successfully, drop out of retry loop
             $success = $true
@@ -189,14 +170,49 @@ function Invoke-ArmTemplateDeployment
                 Write-Host "Invalid ARM template error detected - skipping retries"
                 throw $_
             }
-            elseif ($retries -ge $maxRetries) {
+            elseif ($retries -ge $MaxRetries) {
                 Write-Host "Unable to deploy ARM template - retry attempts exceeded"
                 throw $_
             }
-            Write-Host ("Attempt {0}/{1} failed: {2}" -f $retries, $maxRetries, $_.Exception.Message)
+            Write-Host ("Attempt {0}/{1} failed: {2}" -f $retries, $MaxRetries, $_.Exception.Message)
             $retries++
         }
     }
 
     return $DeploymentResult
+}
+
+function _ensureBicepCliVersionInPath
+{
+    Write-Verbose "Required Bicep version is v$BicepVersion"
+    # Az.PowerShell expects to find the Bicep CLI via the PATH environment variable
+    $existingBicepCommand = Get-Command bicep -ErrorAction SilentlyContinue
+    if ($existingBicepCommand) {
+        # Check the version currently installed
+        $existingBicepCommandVersion = "{0}.{1}.{2}" -f $existingBicepCommand.Version.Major,
+                                                        $existingBicepCommand.Version.Minor,
+                                                        $existingBicepCommand.Version.Build
+        Write-Verbose "Existing installation of Bicep is v$existingBicepCommandVersion"
+    }
+    
+    if ($existingBicepCommandVersion -ne $BicepVersion) {
+        # If the installed version is not what we need, then we:
+        #   1) fallback to using the mechanism in the Azure CLI to install Bicep
+        #   2) insert that path to the front the PATH environment variable, so it is used ahead of any existing version
+
+        # Check whether Azure CLI has prevoiusly installed the required version
+        $existingAzCliBicepVersion = "$(az bicep version)"
+        Write-Verbose "az bicep version: $existingAzCliBicepVersion"
+        if ($existingAzCliBicepVersion.IndexOf("Bicep CLI version $BicepVersion") -lt 0) {
+            Write-Verbose "Installing Bicep CLI tool via Azure CLI"
+            & az bicep install --version "v$BicepVersion" | Out-String | Write-Verbose
+            & az bicep version | Out-String | Write-Verbose
+        }
+
+        # Update the PATH to ensure the Azure CLI copy of Bicep CLI is used by Az.PowerShell
+        $bicepPath = [IO.Path]::Join($env:HOME, ".azure", "bin")
+        $env:PATH = "$bicepPath{0}$($env:PATH){0}" -f [IO.Path]::PathSeparator
+        # verify the install
+        Get-Command bicep | Select-Object -ExpandProperty Path | Out-String | Write-Verbose
+    }
 }

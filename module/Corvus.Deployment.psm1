@@ -10,19 +10,20 @@ Contains a collection of useful utilities, templates and conventions for Azure d
 Contains a collection of useful utilities, templates and conventions for Azure deployment automation.
 
 .PARAMETER SubscriptionId
-The Azure Subscription that will be used for any Azure operations.
+The Azure Subscription that is the default target for any Azure operations.
 
-.PARAMETER SubscriptionId
+.PARAMETER AadTenantId
 The Azure Tenant that the Subscription belongs to.
 #>
 
+[CmdletBinding()]
 param
 (
-	[Parameter(Mandatory=$true)]
-	$SubscriptionId,
+    [Parameter(Position=0)]
+    $SubscriptionId,
 
-	[Parameter(Mandatory=$true)]
-	$AadTenantId
+    [Parameter(Position=1)]
+    $AadTenantId
 )
 
 $ErrorActionPreference = 'Stop'
@@ -35,37 +36,42 @@ $ErrorActionPreference = 'Stop'
 
 # find all the functions that make-up this module
 $functions = Get-ChildItem -Recurse $PSScriptRoot/functions -Include *.ps1 | `
-								Where-Object { $_ -notmatch ".Tests.ps1" }
-					
+                                Where-Object { $_ -notmatch ".Tests.ps1" }
+                    
 # dot source the individual scripts that make-up this module
 foreach ($function in ($functions)) { . $function.FullName }
 
 # export the non-private functions (by convention, private function scripts must begin with an '_' character)
 Export-ModuleMember -function ( $functions | 
-									ForEach-Object { (Get-Item $_).BaseName } | 
-									Where-Object { -not $_.StartsWith("_") }
-							)
-
+                                    ForEach-Object { (Get-Item $_).BaseName } | 
+                                    Where-Object { -not $_.StartsWith("_") }
+                            )
 
 # ensure PowerShell Az modules are available
 $azAvailable = Get-Module Az -ListAvailable
 if ($null -eq $azAvailable) {
-	Write-Error "Az PowerShell modules are not installed - they can be installed using 'Install-Module Az -AllowClobber -Force'"
+    Write-Warning "Az PowerShell modules are not installed - they can be installed using 'Install-Module Az -AllowClobber -Force'"
 }
 
-# Ensure PowerShell Az is logged-in
-if ($null -eq (Get-AzContext) -and [Environment]::UserInteractive) {
-	Connect-AzAccount -Subscription $SubscriptionId -Tenant $AadTenantId
-}
-elseif ($null -eq (Get-AzContext)) {
-	Write-Error "When running non-interactively the process must already be logged-in to the Az PowerShell modules"
+# This will track whether the current session has explicitly connected to a tenant/subscription
+$script:moduleContext = @{
+    SubscriptionId = $null
+    AadTenantId = $null
+    AzPowerShell = @{
+        Connected = $false
+    }
+    AzureCli = @{
+        Connected = $false
+    }
 }
 
-# Ensure we're connected to the correct subscription
-Set-AzContext -SubscriptionId $SubscriptionId -TenantId $AadTenantId | Out-Null
-
+# Validate the Azure connection details only if the details have been specified 
+if ($SubscriptionId -and $AadTenantId) {
+    Connect-Azure -SubscriptionId $SubscriptionId -AadTenantId $AadTenantId
+}
+else {
+    Write-Host "The current Azure connection details have not been validated - use 'Connect-CorvusAzure' to get connected."
+}
 
 # define some useful globals / constants
-$script:AzContext = Get-AzContext
-$script:AadTenantId = $AadTenantId
 $script:AadGraphApiResourceId = "https://graph.windows.net/"

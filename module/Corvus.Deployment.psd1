@@ -10,7 +10,7 @@ RootModule = 'Corvus.Deployment.psm1'
 ModuleVersion = '0.0.0'
 
 # Supported PSEditions
-# CompatiblePSEditions = @()
+CompatiblePSEditions = @('Core')
 
 # ID used to uniquely identify this module
 GUID = '6d1b76e8-dd99-4db2-a49f-588d7f259a2c'
@@ -93,7 +93,7 @@ PrivateData = @{
         # Tags = @()
 
         # A URL to the license for this module.
-        LicenseUri = 'https://github.com/corvus-dotnet/Corvus.Deployment/blob/master/LICENSE'
+        LicenseUri = 'https://github.com/corvus-dotnet/Corvus.Deployment/blob/main/LICENSE'
 
         # A URL to the main website for this project.
         ProjectUri = 'https://github.com/corvus-dotnet/Corvus.Deployment'

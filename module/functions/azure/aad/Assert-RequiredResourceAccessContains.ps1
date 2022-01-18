@@ -33,7 +33,10 @@ function Assert-RequiredResourceAccessContains
         [string] $ResourceId,
 
         [Parameter(Mandatory=$true)]
-        [hashtable[]] $AccessRequirements
+        [hashtable[]] $AccessRequirements,
+
+        [Parameter()]
+        [switch] $UseAzureAdGraph
     )
 
     $madeChange = $false
@@ -50,14 +53,19 @@ function Assert-RequiredResourceAccessContains
         if (-not $RequiredAccess) {
             Write-Host "Adding '$ResourceId : $($access.id)' required resource access"
     
-            $RequiredAccess = @{id=$access.Id; type="Scope"}
+            $RequiredAccess = @{id=$access.Id; type=$access.Type}
             $resourceEntry.resourceAccess += $RequiredAccess
             $madeChange = $true
         }
     }
 
     if ($madeChange) {
-        $graphApiAppUri = (Get-AzureAdGraphApiAppUri $App)
+        if ($UseAzureAdGraph) {
+            $graphApiAppUri = (Get-AzureAdGraphApiAppUri $App)
+        }
+        else {
+            $graphApiAppUri = (Get-MicrosoftGraphApiAppUri $App)
+        }
 
         $patchRequiredResourceAccess = @{requiredResourceAccess=$requiredResourceAccess}
 

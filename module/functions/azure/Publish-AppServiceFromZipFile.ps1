@@ -33,6 +33,9 @@ function Publish-AppServiceFromZipFile
         Write-Error "Could not find application package: $Path"
     }
 
+    # Check whether we have a valid AzPowerShell connection
+    _EnsureAzureConnection -AzPowerShell -ErrorAction Stop
+
     Write-Host "Deploying application ZIP file '$Path' to '$AppServiceName'..."
     $publishResult = Publish-AzWebApp -Force -ArchivePath $Path -WebApp $WebApp
 

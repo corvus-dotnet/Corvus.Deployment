@@ -35,6 +35,9 @@ function Assert-AzureAdApp
         [string[]]$ReplyUrls
     )
 
+    # Check whether we have a valid AzPowerShell connection
+    _EnsureAzureConnection -AzPowerShell -ErrorAction Stop
+    
     Write-Host "Ensuring Azure AD application {$DisplayName} exists..."
 
     $app = Get-AzADApplication -DisplayNameStartWith $DisplayName | `
