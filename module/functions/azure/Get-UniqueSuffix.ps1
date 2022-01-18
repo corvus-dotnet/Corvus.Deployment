@@ -13,9 +13,9 @@ Generates a deterministic hash from a set of inputs, and returns an 12 character
 The subscription ID of the target Azure subscription.
 
 .PARAMETER StackName
-The name of the deployment stack.
+The name of the deployment stack, which is a grouping for what may be multiple services (e.g. a Marain stack).
 
-.PARAMETER SubscriptionId
+.PARAMETER ServiceInstance
 The instance ID of the service for the deployment.
 
 .PARAMETER Environment
