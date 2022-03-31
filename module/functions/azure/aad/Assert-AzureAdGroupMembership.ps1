@@ -53,6 +53,8 @@ function Assert-AzureAdGroupMembership
         [bool] $StrictMode
     )
 
+    _EnsureAzureConnection -AzPowerShell | Out-Null
+
     # Setup the parameters for 'Get-AzADGroup' based on whether we've been given a group Name or ObjectId
     $groupLookupSplat = $PSCmdlet.ParameterSetName -eq "ByName" ? @{DisplayName = $Name} : @{ObjectId = $ObjectId}
     [array]$group = Get-AzADGroup @groupLookupSplat | `

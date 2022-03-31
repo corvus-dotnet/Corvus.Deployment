@@ -3,8 +3,12 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".Tests.ps1", ".p
 
 . "$here\$sut"
 
+# define other functions that will be mocked
+function _EnsureAzureConnection {}
+
 Describe "Assert-AzureAdSecurityGroup Tests" {
 
+    Mock _EnsureAzureConnection { $true }
     Mock Write-Host {}
 
     Context "Group does not exist" {

@@ -3,7 +3,12 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".Tests.ps1", ".p
 
 . "$here\$sut"
 
+# define other functions that will be mocked
+function _EnsureAzureConnection {}
+
 Describe "Get-AzureAdDirectoryObject Tests" {
+
+    function _EnsureAzureConnection { $true }
 
     # Setup some mock AzureAD objects
     $mockGroup = @{

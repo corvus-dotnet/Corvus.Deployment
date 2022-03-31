@@ -53,6 +53,8 @@ function New-Password
         [string] $KeyVaultSecretName
     )
 
+    _EnsureAzureConnection -AzPowerShell | Out-Null
+    
     # reference: https://gist.github.com/onlyann/00d9bb09d4b1338ffc88a213509a6caf
     $characterList = 'a'..'z' + 'A'..'Z' + '0'..'9' + $ValidSymbols
     

@@ -3,10 +3,12 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".Tests.ps1", ".p
 
 . "$here\$sut"
 
-# Import other module dependendencies
-# . "$here\..\..\Select-ExceptIn.ps1"
+# define other functions that will be mocked
+function _EnsureAzureConnection {}
 
 Describe "Assert-AzureAdGroupMembership Tests" {
+
+    Mock _EnsureAzureConnection { $true }
 
     $mockDuplicateGroups = @(
         @{Id="00000000-0000-0000-0000-000000000000"; DisplayName="fakeGroup1"; SecurityEnabled=$true}
