@@ -1,4 +1,4 @@
-# <copyright file="Assert-AzureAdGroup.ps1" company="Endjin Limited">
+# <copyright file="Assert-AzureAdSecurityGroup.ps1" company="Endjin Limited">
 # Copyright (c) Endjin Limited. All rights reserved.
 # </copyright>
 
@@ -7,7 +7,7 @@
 Creates or updates a AzureAD group.
 
 .DESCRIPTION
-Uses the azure-cli to configure an AzureAD group.
+Uses Azure PowerShell to create an AzureAD security group.
 
 .PARAMETER Name
 The display name of the group.
