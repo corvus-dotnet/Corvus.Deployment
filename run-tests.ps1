@@ -2,6 +2,9 @@ $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $PSCommandPath
 $pesterVer = '4.10.1'
 try {
+    # Display what version of Azure PowerShell we have available
+    Get-Module Az.Resources -ListAvailable | Format-Table | Out-string | Write-Host
+
     [array]$existingModule = Get-Module -ListAvailable Pester
     if (!$existingModule -or ($existingModule.Version -notcontains $pesterVer)) {
         Install-Module Pester -RequiredVersion $pesterVer -Force -Scope CurrentUser -SkipPublisherCheck

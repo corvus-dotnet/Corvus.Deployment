@@ -3,8 +3,13 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".Tests.ps1", ".p
 
 . "$here\$sut"
 
+# import other module functions
+. "$here\Get-AzureAdDirectoryObject.ps1"
+
 # define other functions that will be mocked
 function _EnsureAzureConnection {}
+# declare the Azure PowerShell dependencies
+function Get-AzADGroup {}   # workaround for environment issue with GitHub build server
 
 Describe "Assert-AzureAdGroupMembership Tests" {
 
