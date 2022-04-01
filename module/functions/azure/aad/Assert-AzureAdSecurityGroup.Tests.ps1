@@ -135,7 +135,6 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
             It "should not update the group" {
                 Assert-MockCalled _buildCreateRequest -Times 0
                 Assert-MockCalled _getGroupOwners -Times 0
-                # Assert-MockCalled _buildUpdateRequest -Times 1
                 Assert-MockCalled Write-Warning -Times 0
                 Assert-MockCalled Invoke-AzRestMethod -Times 0
             }
