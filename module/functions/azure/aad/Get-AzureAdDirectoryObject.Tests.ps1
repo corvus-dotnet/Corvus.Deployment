@@ -92,7 +92,7 @@ Describe "Get-AzureAdDirectoryObject Tests" {
             $global:methodUsed = $null
             $res = Get-AzureAdDirectoryObject -Criterion $mockServicePrincipal.ObjectId
             
-            It "should return the group" {
+            It "should return the service principal" {
                 $methodUsed | Should -Be "ObjectId"
                 $res.DisplayName | Should -Be $mockServicePrincipal.DisplayName
                 
@@ -110,7 +110,7 @@ Describe "Get-AzureAdDirectoryObject Tests" {
             $global:methodUsed = $null
             $res = Get-AzureAdDirectoryObject -Criterion $mockServicePrincipal.ApplicationId
             
-            It "should return the group" {
+            It "should return the service principal" {
                 $methodUsed | Should -Be "ApplicationId"
                 $res.DisplayName | Should -Be $mockServicePrincipal.DisplayName
                 
@@ -128,7 +128,7 @@ Describe "Get-AzureAdDirectoryObject Tests" {
             $global:methodUsed = $null
             $res = Get-AzureAdDirectoryObject -Criterion $mockServicePrincipal.DisplayName
             
-            It "should return the group" {
+            It "should return the service principal" {
                 $methodUsed | Should -Be "DisplayName"
                 $res.ObjectId | Should -Be $mockServicePrincipal.ObjectId
                 
@@ -149,7 +149,7 @@ Describe "Get-AzureAdDirectoryObject Tests" {
             $global:methodUsed = $null
             $res = Get-AzureAdDirectoryObject -Criterion $mockUser.ObjectId
             
-            It "should return the group" {
+            It "should return the user" {
                 $methodUsed | Should -Be "ObjectId"
                 $res.DisplayName | Should -Be $mockUser.DisplayName
                 
@@ -167,7 +167,7 @@ Describe "Get-AzureAdDirectoryObject Tests" {
             $global:methodUsed = $null
             $res = Get-AzureAdDirectoryObject -Criterion $mockUser.DisplayName
             
-            It "should return the group" {
+            It "should return the user" {
                 $methodUsed | Should -Be "DisplayName"
                 $res.ObjectId | Should -Be $mockUser.ObjectId
                 
@@ -185,7 +185,7 @@ Describe "Get-AzureAdDirectoryObject Tests" {
             $global:methodUsed = $null
             $res = Get-AzureAdDirectoryObject -Criterion $mockUser.UserPrincipalName
             
-            It "should return the group" {
+            It "should return the user" {
                 $methodUsed | Should -Be "UserPrincipalName"
                 $res.ObjectId | Should -Be $mockUser.ObjectId
                 
