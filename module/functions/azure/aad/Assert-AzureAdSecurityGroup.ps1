@@ -7,7 +7,10 @@
 Creates or updates a AzureAD group.
 
 .DESCRIPTION
-Uses Azure PowerShell to create an AzureAD security group.
+Uses Azure PowerShell to create an AzureAD security group.  This function assumes that the caller will not have full AzureAD
+permissions (i.e. 'Group.Create' instead of 'Group.ReadWrite.All') as this is typically the case for least-privilege
+automation scenarios.  It therefore assumes that group owners can only be configured as part of the creation request, as this
+is supported for callers with 'Group.Create' permissions.
 
 .PARAMETER Name
 The display name of the group.
@@ -19,8 +22,8 @@ The username portion of the email address associated with the group
 The description of the group
 
 .PARAMETER OwnersToAssignOnCreation
-The object IDs of the principals to assign as owners to the group.
-Note, that if the group already exists, we will not attempt to assign the owners (as the principal may not have sufficient privileges)
+The DisplayName, UserPrincipalName, ObjectId or ApplicationId of the users, groups, service principals to assign as owners to the group.
+Note, that if the group already exists, we will not attempt to assign the owners (see the note in the description for me details)
 
 .PARAMETER StrictMode
 When true, the group's description forms part of the idempotency check.  If the specified description does not match the group's
@@ -54,14 +57,18 @@ function Assert-AzureAdSecurityGroup
     
     $existingGroup = Get-AzADGroup -DisplayName $name
 
+    # Resolve the ObjectId for any specified owners
+    $ownersToAssignObjectIds = $OwnersToAssignOnCreation |
+        ForEach-Object { Get-AzureAdDirectoryObject -Criterion $_ }
+
     if ($existingGroup) {
         Write-Host "Security group with name $($existingGroup.displayName) already exists."
 
-        if ($OwnersToAssignOnCreation -and $StrictMode) {
-            $groupOwnersIds = _getGroupOwners -GroupObjectId $existingGroup.id
+        if ($ownersToAssignObjectIds -and $StrictMode) {
+            $existingOwners = _getGroupOwners -GroupObjectId $existingGroup.id
 
-            $OwnersToAssignOnCreation | ForEach-Object {
-                if ($_ -notin $groupOwnersIds) {
+            $ownersToAssignObjectIds | ForEach-Object {
+                if ($_ -notin $existingOwners) {
                     Write-Warning "Object ID '$_' was specified to be assigned as group owner, but group already exists and the ownership cannot be updated."
                 }
             }
@@ -74,7 +81,7 @@ function Assert-AzureAdSecurityGroup
     }
     else {
         Write-Host "Security group with name $Name doesn't exist. Creating..."
-        $requestParams = _buildCreateRequest
+        $requestParams = _buildCreateRequest -OwnersObjectIds $ownersToAssignObjectIds
     }
 
     $result = $null
@@ -112,6 +119,10 @@ function _buildUpdateRequest {
 }
 
 function _buildCreateRequest {
+    param (
+        [string[]] $OwnersObjectIds
+    )
+
     $body = @{
         displayName = $Name
         mailNickname = $EmailName
@@ -121,7 +132,7 @@ function _buildCreateRequest {
 
     if ($OwnersToAssignOnCreation) {
         $body["owners@odata.bind"] = @()
-        $body["owners@odata.bind"] += $OwnersToAssignOnCreation | ForEach-Object {
+        $body["owners@odata.bind"] += $OwnersObjectIds | ForEach-Object {
             "https://graph.microsoft.com/v1.0/directoryObjects/$_"
         }
     }
