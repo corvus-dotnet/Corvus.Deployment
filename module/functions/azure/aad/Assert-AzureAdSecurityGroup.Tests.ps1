@@ -5,6 +5,7 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".Tests.ps1", ".p
 
 # define other functions that will be mocked
 function _EnsureAzureConnection {}
+function Get-AzADGroup {}
 
 Describe "Assert-AzureAdSecurityGroup Tests" {
 
