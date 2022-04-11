@@ -19,8 +19,8 @@ function Test-AzureGraphAccess
     (
     )
 
-    # Check whether we have a valid AzPowerShell connection
-    _EnsureAzureConnection -AzPowerShell -ErrorAction Stop
+    # Check whether we have a valid AzPowerShell connection, but no subscription-level access is required
+    _EnsureAzureConnection -AzPowerShell -TenantOnly -ErrorAction Stop | Out-Null
     
     # perform an arbitrary AAD operation to see if we have read access to the graph API
     try {

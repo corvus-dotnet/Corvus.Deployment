@@ -32,7 +32,8 @@ function Get-AzureAdDirectoryObject {
         [switch] $SuppressMultipleMatchWarning
     )
 
-    _EnsureAzureConnection -AzPowerShell | Out-Null
+    # Check whether we have a valid AzPowerShell connection, but no subscription-level access is required
+    _EnsureAzureConnection -AzPowerShell -TenantOnly -ErrorAction Stop | Out-Null
 
     # These are the methods that run the AzureAD queries based on GUID based criteria
     [scriptblock[]]$lookupMethodsById = @(

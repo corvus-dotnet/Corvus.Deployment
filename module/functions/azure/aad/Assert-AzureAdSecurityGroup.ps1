@@ -53,7 +53,8 @@ function Assert-AzureAdSecurityGroup
         [bool] $StrictMode = $true      # default to true, to ensure backwards-compatible behaviour
     )
 
-    _EnsureAzureConnection -AzPowerShell | Out-Null
+    # Check whether we have a valid AzPowerShell connection, but no subscription-level access is required
+    _EnsureAzureConnection -AzPowerShell -TenantOnly -ErrorAction Stop | Out-Null
     
     $existingGroup = Get-AzADGroup -DisplayName $name
 

@@ -96,7 +96,15 @@ function Assert-AzureServicePrincipalForRbac
     }
     #endregion
 
-    _EnsureAzureConnection -AzPowerShell | Out-Null
+    # Check whether we have a valid AzPowerShell connection
+    if ($PSCmdlet.ParameterSetName -eq "KeyVault") {
+        # Subscription access required for key vault integration
+        _EnsureAzureConnection -AzPowerShell -ErrorAction Stop | Out-Null
+    }
+    else {
+        # No subscription-level access is required
+        _EnsureAzureConnection -AzPowerShell -TenantOnly -ErrorAction Stop | Out-Null
+    }
 
     $useKeyVault = ($PSCmdlet.ParameterSetName -eq "KeyVault")
 
