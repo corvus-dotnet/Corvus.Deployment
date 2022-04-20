@@ -5,7 +5,7 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".Tests.ps1", ".p
 
 # Make external dependencies available for mocking
 function Get-AzKeyVaultSecret {}
-function Set-AzKeytVaultSecret {}
+function Set-AzKeyVaultSecret {}
 function New-AzADAppCredential { param( [Parameter(ValueFromPipeline = $true)]$ApplicationObject, [Parameter()]$DisplayName, [Parameter()]$EndDate ) }
 function New-AzADServicePrincipalCredential { param( [Parameter(ValueFromPipeline = $true)]$ServicePrincipalObject, [Parameter()]$EndDate ) }
 function Invoke-AzRestMethod { param($Uri, $Method, $Payload) }
