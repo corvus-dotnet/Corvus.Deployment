@@ -6,6 +6,7 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".Tests.ps1", ".p
 # Make external dependencies available for mocking
 function Get-AzKeyVaultSecret {}
 function Set-AzKeyVaultSecret {}
+function Get-AzContext {}
 function New-AzADAppCredential { param( [Parameter(ValueFromPipeline = $true)]$ApplicationObject, [Parameter()]$DisplayName, [Parameter()]$EndDate ) }
 function New-AzADServicePrincipalCredential { param( [Parameter(ValueFromPipeline = $true)]$ServicePrincipalObject, [Parameter()]$EndDate ) }
 function Invoke-AzRestMethod { param($Uri, $Method, $Payload) }
@@ -30,6 +31,7 @@ Describe "Assert-AzureServicePrincipalForRbac Tests" {
     Mock New-AzADAppCredential { @{ SecretText = ("mock-secret" | ConvertTo-SecureString -AsPlainText) }}
     Mock New-AzADServicePrincipalCredential { @{ SecretText = ("mock-secret" | ConvertTo-SecureString -AsPlainText) }}
     Mock Set-AzKeyVaultSecret {}
+    Mock Get-AzContext { @{ Tenant = @{Id = "00000000-0000-0000-0000-000000000009"} } }
 
     Context "Not using Key Vault" {
 

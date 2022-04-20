@@ -71,8 +71,10 @@ function Assert-AzureServicePrincipalForRbac
         [switch] $UseApplicationCredential
     )
 
+    $useKeyVault = ($PSCmdlet.ParameterSetName -eq "KeyVault")
+
     # Check whether we have a valid AzPowerShell connection
-    if ($PSCmdlet.ParameterSetName -eq "KeyVault") {
+    if ($useKeyVault) {
         # Subscription access required for key vault integration
         _EnsureAzureConnection -AzPowerShell -ErrorAction Stop | Out-Null
     }
@@ -80,9 +82,6 @@ function Assert-AzureServicePrincipalForRbac
         # No subscription-level access is required
         _EnsureAzureConnection -AzPowerShell -TenantOnly -ErrorAction Stop | Out-Null
     }
-
-    $useKeyVault = ($PSCmdlet.ParameterSetName -eq "KeyVault")
-
 
     $credentialSecret = $null
     $existingSp = _getServicePrincipal -DisplayName $Name
@@ -253,7 +252,7 @@ function Assert-AzureServicePrincipalForRbac
 
         return ($newSp.Content | ConvertFrom-Json -AsHashtable)
     }
-
+    
     # These wrapper functions are required for mocking purposes as '_getApplication' is called in 2 separate scenarios
     function _getApplicationForNewServicePrincipal {
         [CmdletBinding()]
