@@ -23,7 +23,7 @@ The description of the group
 
 .PARAMETER OwnersToAssignOnCreation
 The DisplayName, UserPrincipalName, ObjectId or ApplicationId of the users, groups, service principals to assign as owners to the group.
-Note, that if the group already exists, we will not attempt to assign the owners (see the note in the description for me details)
+Note, that if the group already exists, we will not attempt to assign the owners (see the note in the description for more details)
 
 .PARAMETER StrictMode
 When true, the group's description forms part of the idempotency check.  If the specified description does not match the group's
