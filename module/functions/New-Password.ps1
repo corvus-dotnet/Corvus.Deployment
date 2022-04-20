@@ -32,18 +32,22 @@ $pwd = New-Password -Length 18
 #>
 function New-Password
 {
-    [CmdletBinding(DefaultParameterSetName="Default")]
+    [CmdletBinding(DefaultParameterSetName="Default", SupportsShouldProcess)]
     param
     (
-        [Parameter(ParameterSetName="Default")]
+        [Parameter(ParameterSetName="Default", Position = 0)]
+        [Parameter(ParameterSetName="UseKeyVault", Position = 0)]
+        [Parameter(Position = 0)]
         [ValidateRange(12, 256)]
         [int] $Length = 16,
 
         [Parameter(ParameterSetName="Default")]
+        [Parameter(ParameterSetName="UseKeyVault")]
         [ValidateNotNull()]
         [char[]] $ValidSymbols = '!@#$%^&*'.ToCharArray(),
 
         [Parameter(ParameterSetName="Default")]
+        [Parameter(ParameterSetName="UseKeyVault")]
         [switch] $PassThru,
 
         [Parameter(Mandatory=$true, ParameterSetName="UseKeyVault")]
@@ -53,7 +57,11 @@ function New-Password
         [string] $KeyVaultSecretName
     )
 
-    _EnsureAzureConnection -AzPowerShell | Out-Null
+    $useKeyVault = $PSCmdlet.ParameterSetName -eq "UseKeyVault"
+
+    if ($useKeyVault -and $PSCmdlet.ShouldProcess($KeyVaultName, "Connect to key vault")) {
+        _EnsureAzureConnection -AzPowerShell | Out-Null
+    }
     
     # reference: https://gist.github.com/onlyann/00d9bb09d4b1338ffc88a213509a6caf
     $characterList = 'a'..'z' + 'A'..'Z' + '0'..'9' + $ValidSymbols
@@ -66,26 +74,28 @@ function New-Password
             $password += $characterList[$randomIndex]
         }
 
-        [int]$hasLowerChar = $password -cmatch '[a-z]'
-        [int]$hasUpperChar = $password -cmatch '[A-Z]'
-        [int]$hasDigit = $password -match '[0-9]'
-        [int]$hasSymbol = $password.IndexOfAny($ValidSymbols) -ne -1
+        $hasLowerChar = $password -cmatch '[a-z]'
+        $hasUpperChar = $password -cmatch '[A-Z]'
+        $hasDigit = $password -match '[0-9]'
+        $hasSymbol = $password.IndexOfAny($ValidSymbols) -ne -1
 
         $iterations++
     }
-    until (($hasLowerChar + $hasUpperChar + $hasDigit + $hasSymbol) -eq 4)
+    until ($hasLowerChar -and $hasUpperChar -and $hasDigit -and $hasSymbol)
     
     Write-Verbose "Password generated after $iterations iterations"
     $securePassword = $password | ConvertTo-SecureString -AsPlainText
     $password = $null
 
-    if ($PSCmdlet.ParameterSetName -eq "UseKeyVault") {
-        Write-Host "Storing password in key vault [VaultName=$KeyVaultName, SecretName=$KeyVaultSecretName]"
-        Set-AzKeyVaultSecret -VaultName $KeyVaultName `
-                                -Name $KeyVaultSecretName `
-                                -SecretValue $securePassword `
-                                -ContentType "text/plain" `
-            | Out-Null
+    if ($useKeyVault) {
+        if ($PSCmdlet.ShouldProcess($KeyVaultName, "Store password in key vault")) {
+            Write-Host "Storing password in key vault [VaultName=$KeyVaultName, SecretName=$KeyVaultSecretName]"
+            Set-AzKeyVaultSecret -VaultName $KeyVaultName `
+                                    -Name $KeyVaultSecretName `
+                                    -SecretValue $securePassword `
+                                    -ContentType "text/plain" `
+                | Out-Null
+        }
     }
 
     if ($PassThru) {
