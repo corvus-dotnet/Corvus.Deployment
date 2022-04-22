@@ -7,8 +7,6 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".Tests.ps1", ".p
 function Get-AzKeyVaultSecret {}
 function Set-AzKeyVaultSecret {}
 function Get-AzContext {}
-function New-AzADAppCredential { param( [Parameter(ValueFromPipeline = $true)]$ApplicationObject, [Parameter()]$DisplayName, [Parameter()]$EndDate ) }
-function New-AzADServicePrincipalCredential { param( [Parameter(ValueFromPipeline = $true)]$ServicePrincipalObject, [Parameter()]$EndDate ) }
 function Invoke-AzRestMethod { param($Uri, $Method, $Payload) }
 function _EnsureAzureConnection {}
 function Write-Host {}
@@ -28,8 +26,8 @@ Describe "Assert-AzureServicePrincipalForRbac Tests" {
     }
 
     # Global mocks
-    Mock New-AzADAppCredential { @{ SecretText = ("mock-secret" | ConvertTo-SecureString -AsPlainText) }}
-    Mock New-AzADServicePrincipalCredential { @{ SecretText = ("mock-secret" | ConvertTo-SecureString -AsPlainText) }}
+    Mock Invoke-AzRestMethod { @{ Content = (@{ secretText = "mock-secret" } | ConvertTo-Json) } } -ParameterFilter { $Uri.EndsWith("addPassword") }
+    Mock Invoke-AzRestMethod {} -ParameterFilter { $Uri.EndsWith("removePassword") }
     Mock Set-AzKeyVaultSecret {}
     Mock Get-AzContext { @{ Tenant = @{Id = "00000000-0000-0000-0000-000000000009"} } }
 
@@ -41,7 +39,7 @@ Describe "Assert-AzureServicePrincipalForRbac Tests" {
 
             Describe "Creating a new service principal with default options" {
 
-                Mock Invoke-AzRestMethod { @{ Content = ($mockSp | ConvertTo-Json) } }
+                Mock Invoke-AzRestMethod { @{ Content = ($mockSp | ConvertTo-Json) } } -ParameterFilter { $Uri.EndsWith('servicePrincipals') }
                 Mock _newApplication { $mockApp }
     
                 Mock _getApplication {}
@@ -66,15 +64,14 @@ Describe "Assert-AzureServicePrincipalForRbac Tests" {
                 }
     
                 It "should create a new service principal credential" {
-                    Assert-MockCalled New-AzADServicePrincipalCredential -Times 1
-                    Assert-MockCalled New-AzADAppCredential -Times 0
+                    Assert-MockCalled Invoke-AzRestMethod -Times 1 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "servicePrincipals" }
+                    Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "applications" }
                 }
     
                 It "should not update the key vault secret" {
                     Assert-MockCalled Set-AzKeyVaultSecret -Times 0
                 }
             }
-    
             Describe "Updating an existing service principal with default options" {
     
                 Mock _getServicePrincipal { $mockSp }
@@ -138,9 +135,9 @@ Describe "Assert-AzureServicePrincipalForRbac Tests" {
                     $res[0].id | Should -Be '00000000-0000-0000-0000-000000000001'
                     $res[1] | Should -Be "mock-secret"
     
-                    Assert-MockCalled New-AzADServicePrincipalCredential -Times 1
+                    Assert-MockCalled Invoke-AzRestMethod -Times 1 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "servicePrincipals" }
                     Assert-MockCalled _getServicePrincipal -Times 1
-                    Assert-MockCalled New-AzADAppCredential -Times 0
+                    Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "applications" }
                     Assert-MockCalled _getApplication -Times 0
                 }
     
@@ -182,8 +179,9 @@ Describe "Assert-AzureServicePrincipalForRbac Tests" {
     
                 It "should create a new application credential" {
                     Assert-MockCalled _getApplicationForNewAppCredential -Times 1 -ParameterFilter { $DisplayName -eq 'mock-sp' }
-                    Assert-MockCalled New-AzADServicePrincipalCredential -Times 0
-                    Assert-MockCalled New-AzADAppCredential -Times 1
+                    Assert-MockCalled Invoke-AzRestMethod -Times 1 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "applications" }
+
+                    Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "servicePrincipals" }
                 }
     
                 It "should not update the key vault secret" {
@@ -257,9 +255,10 @@ Describe "Assert-AzureServicePrincipalForRbac Tests" {
                     $res[1] | Should -Be "mock-secret"
     
                     Assert-MockCalled _getServicePrincipal -Times 1
-                    Assert-MockCalled New-AzADAppCredential -Times 1
+                    Assert-MockCalled Invoke-AzRestMethod -Times 1 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "applications" }
+
                     Assert-MockCalled _getApplication -Times 1
-                    Assert-MockCalled New-AzADServicePrincipalCredential -Times 0
+                    Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "servicePrincipals" }
                 }
     
                 It "should not update the key vault secret" {
@@ -272,7 +271,12 @@ Describe "Assert-AzureServicePrincipalForRbac Tests" {
 
     Context "Key Vault Support" {
 
-        Mock Get-AzKeyVaultSecret { "mock-secret" }
+        $mockSavedSecret = @{
+            appId = "mockAppId"
+            password = "mockSecret"
+            tenantId = "mockTenantId"
+        }
+        Mock Get-AzKeyVaultSecret { @{ SecretValue = ($mockSavedSecret | ConvertTo-Json | ConvertTo-SecureString -AsPlainText) } }
 
         Context "Using service principal credentials" {
 
@@ -305,8 +309,8 @@ Describe "Assert-AzureServicePrincipalForRbac Tests" {
                     $res[1] | Should -Be $null
 
                     Assert-MockCalled _getApplication -Times 1 -ParameterFilter { $DisplayName -eq 'mock-sp' }
-                    Assert-MockCalled New-AzADServicePrincipalCredential -Times 1
-                    Assert-MockCalled New-AzADAppCredential -Times 0
+                    Assert-MockCalled Invoke-AzRestMethod -Times 1 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "servicePrincipals" }
+                    Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "applications" }
                 }
 
                 It "should store the secret the key vault" {
@@ -344,8 +348,8 @@ Describe "Assert-AzureServicePrincipalForRbac Tests" {
 
                     Assert-MockCalled _getServicePrincipal -Times 1
                     Assert-MockCalled _getApplication -Times 0
-                    Assert-MockCalled New-AzADServicePrincipalCredential -Times 0
-                    Assert-MockCalled New-AzADAppCredential -Times 0
+                    Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "servicePrincipals" }
+                    Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "applications" }
                 }
 
                 It "should not update the key vault secret" {
@@ -360,7 +364,6 @@ Describe "Assert-AzureServicePrincipalForRbac Tests" {
 
                 Mock _newApplication {}
                 Mock _newServicePrincipal {}
-                Mock Get-AzKeyVaultSecret { "mock-secret" }
 
                 $res = Assert-AzureServicePrincipalForRbac `
                             -Name "mock-sp" `
@@ -385,8 +388,8 @@ Describe "Assert-AzureServicePrincipalForRbac Tests" {
 
                     Assert-MockCalled _getServicePrincipal -Times 1
                     Assert-MockCalled _getApplication -Times 0
-                    Assert-MockCalled New-AzADServicePrincipalCredential -Times 1
-                    Assert-MockCalled New-AzADAppCredential -Times 0
+                    Assert-MockCalled Invoke-AzRestMethod -Times 1 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "servicePrincipals" }
+                    Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "applications" }
                 }
 
                 It "should update the key vault secret" {
@@ -428,8 +431,8 @@ Describe "Assert-AzureServicePrincipalForRbac Tests" {
                     $res[1] | Should -Be $null
 
                     Assert-MockCalled _getApplicationForNewAppCredential -Times 1 -ParameterFilter { $DisplayName -eq 'mock-sp' }
-                    Assert-MockCalled New-AzADServicePrincipalCredential -Times 0
-                    Assert-MockCalled New-AzADAppCredential -Times 1
+                    Assert-MockCalled Invoke-AzRestMethod -Times 1 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "applications" }
+                    Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "servicePrincipals" }
                 }
 
                 It "should store the secret the key vault" {
@@ -468,8 +471,8 @@ Describe "Assert-AzureServicePrincipalForRbac Tests" {
 
                     Assert-MockCalled _getServicePrincipal -Times 1
                     Assert-MockCalled _getApplication -Times 0
-                    Assert-MockCalled New-AzADServicePrincipalCredential -Times 0
-                    Assert-MockCalled New-AzADAppCredential -Times 0
+                    Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "applications" }
+                    Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "servicePrincipals" }
                 }
 
                 It "should not update the key vault secret" {
@@ -484,7 +487,6 @@ Describe "Assert-AzureServicePrincipalForRbac Tests" {
 
                 Mock _newApplication {}
                 Mock _newServicePrincipal {}
-                Mock Get-AzKeyVaultSecret { "mock-secret" }
 
                 $res = Assert-AzureServicePrincipalForRbac `
                             -Name "mock-sp" `
@@ -510,8 +512,8 @@ Describe "Assert-AzureServicePrincipalForRbac Tests" {
 
                     Assert-MockCalled _getServicePrincipal -Times 1
                     Assert-MockCalled _getApplication -Times 1
-                    Assert-MockCalled New-AzADServicePrincipalCredential -Times 0
-                    Assert-MockCalled New-AzADAppCredential -Times 1
+                    Assert-MockCalled Invoke-AzRestMethod -Times 1 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "applications" }
+                    Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "servicePrincipals" }
                 }
 
                 It "should update the key vault secret" {

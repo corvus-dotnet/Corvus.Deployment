@@ -74,14 +74,8 @@ function Assert-AzureServicePrincipalForRbac
     $useKeyVault = ($PSCmdlet.ParameterSetName -eq "KeyVault")
 
     # Check whether we have a valid AzPowerShell connection
-    if ($useKeyVault) {
-        # Subscription access required for key vault integration
-        _EnsureAzureConnection -AzPowerShell -ErrorAction Stop | Out-Null
-    }
-    else {
-        # No subscription-level access is required
-        _EnsureAzureConnection -AzPowerShell -TenantOnly -ErrorAction Stop | Out-Null
-    }
+    # No subscription-level access is required even when using key vault, just data-plane permissions to it
+    _EnsureAzureConnection -AzPowerShell -TenantOnly -ErrorAction Stop | Out-Null
 
     $credentialSecret = $null
     $existingSp = _getServicePrincipal -DisplayName $Name
@@ -94,15 +88,17 @@ function Assert-AzureServicePrincipalForRbac
                 DisplayName = $Name
             }
             $newSp = _newServicePrincipal @createParams
-            Write-Host ("Created service principal [ObjectId={0}, ApplicationId={1}]" -f $newSp.Id, $newSp.appId)
+            Write-Host ("Created service principal [ObjectId={0}, ApplicationId={1}]" -f $newSp.id, $newSp.appId)
             
             # Setup the client secret/credential and store it in key vault, if necessary
             if ($UseApplicationCredential) {
                 $app = _getApplicationForNewAppCredential -DisplayName $Name
+                Write-Host "Credential will be added to app registration [AppId=$($app.appId)]"
                 $handleCredSplat = @{ Application = $app }
             }
             else {
                 $handleCredSplat = @{ ServicePrincipal = $newSp }
+                Write-Host "Credential will be added to service principal [Id=$($newSp.id)]"
             }
             $credentialSecret = _handleCredential @handleCredSplat -UseKeyVault $useKeyVault
         }
@@ -110,12 +106,19 @@ function Assert-AzureServicePrincipalForRbac
     else {
         Write-Host ("Service Principal '{0}' already exists [ObjectId={1}, ApplicationId={2}]" -f `
                             $Name,
-                            $existingSp.Id,
+                            $existingSp.id,
                             $existingSp.appId)
 
         if ($useKeyVault) {
-            # if using key vault, check whether the specified secret is available
-            $existingSecret = Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $KeyVaultSecretName
+            # if using key vault, check whether the specified secret is available and contains the password
+            $existingSecret = $null
+            $kvSecret = Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $KeyVaultSecretName
+            if ($kvSecret) {
+                $existingSecret = $kvSecret.SecretValue |
+                                    ConvertFrom-SecureString -AsPlainText |
+                                    ConvertFrom-Json |
+                                    Select-Object -ExpandProperty password    
+            }
         }
 
         # rotate the client secret/credential 
@@ -124,10 +127,12 @@ function Assert-AzureServicePrincipalForRbac
                 Write-Host "Rotating service principal credential [UseKeyVault=$useKeyVault, KeyVaultSecretMissing=$(!$existingSecret), RotateFlag=$RotateSecret]"
                 if ($UseApplicationCredential) {
                     $app = _getApplicationForNewAppCredential -DisplayName $Name
+                    Write-Host "Credential will be added to app registration [AppId=$($app.appId)]"
                     $handleCredSplat = @{ Application = $app }
                 }
                 else {
                     $handleCredSplat = @{ ServicePrincipal = $existingSp }
+                    Write-Host "Credential will be added to service principal [Id=$($existingSp.id)]"
                 }
 
                 $credentialSecret = _handleCredential @handleCredSplat -UseKeyVault $useKeyVault
@@ -154,23 +159,50 @@ function Assert-AzureServicePrincipalForRbac
 
         if ($PSCmdlet.ParameterSetName -eq "Application") {
             Write-Verbose "Credential will be associated with the App registration"
-            # Generate a new secret attached to the application registration
-            $newCred = $Application | New-AzADAppCredential `
-                            -EndDate ([DateTime]::Now.AddDays($PasswordLifetimeDays)) `
-                            -DisplayName $CredentialDisplayName
+            $baseUri = "https://graph.microsoft.com/v1.0/applications/$($Application.id)"
+            # Check whether we have an existing credential with the same display name
+            $existingCred = $Application.passwordCredentials |
+                                Where-Object { $_.displayName -eq $CredentialDisplayName }
         }
         else {
-            # Generate a new secret attached to the service principal
             Write-Verbose "Credential will be associated with the Service Principal"
-            $newCred = $ServicePrincipal | New-AzADServicePrincipalCredential `
-                            -EndDate ([DateTime]::Now.AddDays($PasswordLifetimeDays))
+            $baseUri = "https://graph.microsoft.com/v1.0/servicePrincipals/$($ServicePrincipal.id)"
+            # Check whether we have an existing credential with the same display name
+            $existingCred = $ServicePrincipal.passwordCredentials |
+                                Where-Object { $_.displayName -eq $CredentialDisplayName }
         }
+
+        # Before adding a credential we need to check if we already added one previously - the number of
+        # credentials for an object can be limited.  We should be a good citizen and remove our old one before
+        # re-generating it
+        if ($existingCred) {
+            Write-Host "Removing existing credential [DisplayName=$CredentialDisplayName; KeyId=$($existingCred.keyId)]"
+            $resp = Invoke-AzRestMethod -Uri "$baseUri/removePassword" `
+                                        -Method POST `
+                                        -Payload ( @{keyId = $existingCred.keyId} | ConvertTo-Json -Compress )
+        }   
+
+        # Now we can generate the new credential - we use the REST API rather than a build cmdlet so that
+        # we can set a display name for the credentials.  This improves traceability and also helps us find
+        # 'our' credential in the future (e.g. when we want to rotate it)
+        $body = @{
+            passwordCredential = @{
+                displayName = $CredentialDisplayName
+                endDateTime = ([DateTime]::Now.AddDays($PasswordLifetimeDays))                    
+            }
+        }
+        $resp = Invoke-AzRestMethod -Uri "$baseUri/addPassword" `
+                                    -Method POST `
+                                    -Payload ($body | ConvertTo-Json -Compress)
+        $newCred = $resp.Content |
+                        ConvertFrom-Json -AsHashtable
         
 
+        # Store the credentials in key vault, if required
         if ($UseKeyVault) {
             $appLoginDetails = @{
                 appId = $Application.appId
-                password = $newCred.SecretText
+                password = $newCred.secretText
                 tenant = (Get-AzContext).Tenant.Id
             }
             Write-Host "Storing client secret in key vault [VaultName=$KeyVaultName, SecretName=$KeyVaultSecretName]"
@@ -183,7 +215,7 @@ function Assert-AzureServicePrincipalForRbac
             return $null
         }
         else {
-            return (ConvertFrom-SecureString $newCred.SecretText -AsPlainText)
+            return $newCred.secretText
         }
     }
     function _getApplication {
@@ -208,11 +240,13 @@ function Assert-AzureServicePrincipalForRbac
         )
 
         $payload = @{ displayName = $DisplayName}
+        Write-Verbose "Creating app registation object [DisplayName=$DisplayName]"
         $resp = Invoke-AzRestMethod -Uri "https://graph.microsoft.com/v1.0/applications" `
                                     -Method POST `
                                     -Payload ($payload | ConvertTo-Json)
-        $newAppp = $resp.Content |
-                ConvertFrom-Json -AsHashtable
+        $newApp = $resp.Content |
+                    ConvertFrom-Json -AsHashtable
+        Write-Verbose "Created app registation object [AppId=$($newApp.appId); Id=$($newApp.id)]"
 
         return $newApp
     }
@@ -246,11 +280,15 @@ function Assert-AzureServicePrincipalForRbac
 
         # Create the service principal
         $payload = @{ appId = $app.appId}
-        $newSp = Invoke-AzRestMethod -Uri "https://graph.microsoft.com/v1.0/servicePrincipals" `
+        Write-Verbose "Creating service principal object [AppId=$($app.appId)]"
+        $resp = Invoke-AzRestMethod -Uri "https://graph.microsoft.com/v1.0/servicePrincipals" `
                                      -Method POST `
                                      -Payload ($payload | ConvertTo-Json)
+        $newSp = $resp.Content |
+                    ConvertFrom-Json -AsHashtable
+        Write-Verbose "Created service principal object [Id=$($newSp.id)]"
 
-        return ($newSp.Content | ConvertFrom-Json -AsHashtable)
+        return $newSp
     }
     
     # These wrapper functions are required for mocking purposes as '_getApplication' is called in 2 separate scenarios
