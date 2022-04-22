@@ -60,7 +60,8 @@ function Assert-AzureAdSecurityGroup
 
     # Resolve the ObjectId for any specified owners
     $ownersToAssignObjectIds = $OwnersToAssignOnCreation |
-        ForEach-Object { Get-AzureAdDirectoryObject -Criterion $_ }
+                                    Where-Object { $_ } |
+                                    ForEach-Object { Get-AzureAdDirectoryObject -Criterion $_ }
 
     if ($existingGroup) {
         Write-Host "Security group with name $($existingGroup.displayName) already exists."
@@ -133,9 +134,11 @@ function _buildCreateRequest {
 
     if ($OwnersToAssignOnCreation) {
         $body["owners@odata.bind"] = @()
-        $body["owners@odata.bind"] += $OwnersObjectIds | ForEach-Object {
-            "https://graph.microsoft.com/v1.0/directoryObjects/$_"
-        }
+        $body["owners@odata.bind"] += ($OwnersObjectIds | 
+                Where-Object { $_ } |
+                ForEach-Object {
+                    "https://graph.microsoft.com/v1.0/directoryObjects/$_"
+                })
     }
 
     if ($Description) {
