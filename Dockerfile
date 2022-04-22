@@ -24,15 +24,15 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
 ARG AZ_PWSH_VER=7.3.2
 RUN pwsh -noni -c "\$ProgressPreference='SilentlyContinue'; Install-Module Az -AllowClobber -RequiredVersion '${AZ_PWSH_VER}' -Repository PSGallery -Force -Scope AllUsers -Verbose"
 
-# Install Corvus.Deployment module
-ADD module /usr/local/share/powershell/Modules/Corvus.Deployment
-
 # Install Bicep so it is available via azure-cli and system path
 ARG AZ_BICEP_VER=v0.5.6
 RUN az bicep install --version $AZ_BICEP_VER \
     && mv /root/.azure/bin/bicep /usr/local/bin/bicep \
     && chmod 755 /usr/local/bin/bicep \
     && ln -s /usr/local/bin/bicep /root/.azure/bin/bicep
+
+# Install Corvus.Deployment module
+ADD module /usr/local/share/powershell/Modules/Corvus.Deployment
 
 # Default to non-root user
 RUN useradd -c 'corvus.deployment user' -m -d /home/corvus -s /bin/bash corvus
