@@ -12,10 +12,10 @@ permissions (i.e. 'Group.Create' instead of 'Group.ReadWrite.All') as this is ty
 automation scenarios.  It therefore assumes that group owners can only be configured as part of the creation request, as this
 is supported for callers with 'Group.Create' permissions.
 
-.PARAMETER Name
+.PARAMETER DisplayName
 The display name of the group.
 
-.PARAMETER EmailName
+.PARAMETER MailNickname
 The username portion of the email address associated with the group
 
 .PARAMETER Description
@@ -37,11 +37,13 @@ function Assert-AzureAdSecurityGroup
 {
     [CmdletBinding()]
     param (
+        [Alias("Name")]
         [Parameter(Mandatory=$true)]
-        [string] $Name,
+        [string] $DisplayName,
 
+        [Alias("EmailName")]
         [Parameter(Mandatory=$true)]
-        [string] $EmailName,
+        [string] $MailNickname,
 
         [Parameter()]
         [string] $Description,
@@ -56,7 +58,7 @@ function Assert-AzureAdSecurityGroup
     # Check whether we have a valid AzPowerShell connection, but no subscription-level access is required
     _EnsureAzureConnection -AzPowerShell -TenantOnly -ErrorAction Stop | Out-Null
     
-    $existingGroup = Get-AzADGroup -DisplayName $name
+    $existingGroup = Get-AzADGroup -DisplayName $DisplayName
 
     # Resolve the ObjectId for any specified owners
     $ownersToAssignObjectIds = $OwnersToAssignOnCreation |
@@ -82,17 +84,22 @@ function Assert-AzureAdSecurityGroup
         }
     }
     else {
-        Write-Host "Security group with name $Name doesn't exist. Creating..."
-        $requestParams = _buildCreateRequest -OwnersObjectIds $ownersToAssignObjectIds
+        Write-Host "Security group with name $DisplayName doesn't exist. Creating..."
+        $requestParams = _buildCreateRequest -OwnersObjectIds ($ownersToAssignObjectIds | Select-Object -ExpandProperty id)
     }
 
-    $result = $null
     if ($requestParams) {
-        $result = Invoke-AzRestMethod @requestParams
+        $resp = Invoke-AzRestMethod @requestParams
+        if ($resp.StatusCode -ge 400) {
+            $errorMessage = "AAD Security group processing failed: $($resp.Content | ConvertFrom-Json | Select-Object -ExpandProperty error)"
+            throw $errorMessage
+        }
         Write-Host "AAD Security group processing complete"
+
+        $existingGroup = Get-AzADGroup -ObjectId ($existingGroup ? $existingGroup.id : ($resp.Content | ConvertFrom-Json).id)
     }
 
-    return $result
+    return $existingGroup
 }
 
 function _buildUpdateRequest {
@@ -109,7 +116,7 @@ function _buildUpdateRequest {
     
         $restParams = @{
             Uri = "https://graph.microsoft.com/v1.0/groups/$($existingGroup.Id)"
-            Method = "POST"
+            Method = "PATCH"
             Payload = ($updateBody | ConvertTo-Json -Depth 3 -Compress)
         }
 
@@ -122,22 +129,22 @@ function _buildUpdateRequest {
 
 function _buildCreateRequest {
     param (
-        [string[]] $OwnersObjectIds
+        [guid[]] $OwnersObjectIds
     )
 
     $body = @{
-        displayName = $Name
-        mailNickname = $EmailName
+        displayName = $DisplayName
+        mailNickname = $MailNickname
         mailEnabled = $false
         securityEnabled = $true
     }
 
-    if ($OwnersToAssignOnCreation) {
+    if ($OwnersObjectIds) {
         $body["owners@odata.bind"] = @()
         $body["owners@odata.bind"] += ($OwnersObjectIds | 
                 Where-Object { $_ } |
                 ForEach-Object {
-                    "https://graph.microsoft.com/v1.0/directoryObjects/$_"
+                    "https://graph.microsoft.com/v1.0/directoryObjects/$($_.ToString())"
                 })
     }
 
@@ -161,9 +168,16 @@ function _getGroupOwners {
         [string] $GroupObjectId
     )
 
-    Invoke-AzRestMethod -Uri "https://graph.microsoft.com/v1.0/groups/$GroupObjectId/owners" |
-            Select-Object -ExpandProperty Content |
-            ConvertFrom-Json |
-            Select-Object -ExpandProperty value |
-            Select-Object -ExpandProperty id
+    $resp = Invoke-AzRestMethod -Uri "https://graph.microsoft.com/v1.0/groups/$GroupObjectId/owners" |
+                Select-Object -ExpandProperty Content |
+                ConvertFrom-Json |
+                Select-Object -ExpandProperty value |
+                Select-Object -ExpandProperty id
+
+    if ($resp.StatusCode -ge 400) {
+        $errorMessage = "Failed to lookup existing group owners [ObjectId=$GroupObjectId]: $($resp.Content | ConvertFrom-Json | Select-Object -ExpandProperty error)"
+        throw $errorMessage
+    }
+
+    return $resp
 }
