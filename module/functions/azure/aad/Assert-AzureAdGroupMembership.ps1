@@ -58,19 +58,20 @@ function Assert-AzureAdGroupMembership
 
     # Setup the parameters for 'Get-AzADGroup' based on whether we've been given a group Name or ObjectId
     $groupLookupSplat = $PSCmdlet.ParameterSetName -eq "ByName" ? @{DisplayName = $Name} : @{ObjectId = $ObjectId}
-    [array]$group = Get-AzADGroup @groupLookupSplat | `
+    [array]$groups = Get-AzADGroup @groupLookupSplat | `
         Where-Object { $_.SecurityEnabled -eq ($GroupType -eq "Security") }
 
-    if (!$group) {
+    if (!$groups) {
         throw "The specified group could not be found: $($groupLookupSplat.Keys[0])=$($groupLookupSplat.Values[0])"
     }
-    elseif ($group.Count -gt 1) {
-        throw "Found multiple matching groups: $($group | % { "ObjectId=$($_.Id);"} )"
+    elseif ($groups.Count -gt 1) {
+        throw "Found multiple matching groups: $($groups | % { "ObjectId=$($_.Id);"} )"
     }
+    $group = $groups[0]
 
     Write-Information "Processing group membership for '$($group.DisplayName)' [ObjectId=$($group.Id)]"
 
-    $existingMemberObjectIds = $group | Get-AzADGroupMember | Select-Object -ExpandProperty Id
+    $existingMemberObjectIds = _getGroupMembers $group.id | Select-Object -ExpandProperty id
 
     # Required members can be specified in various forms:
     #   - ObjectId (groups, users & service principals)
@@ -97,7 +98,7 @@ function Assert-AzureAdGroupMembership
     $membersToAdd = $requiredMemberObjectIds | Where-Object { $_ -notin $existingMemberObjectIds }
     if ($membersToAdd) {
         Write-Information "Adding members: $($membersToAdd -join ', ')"
-        $group = $group | Add-AzADGroupMember -MemberObjectId $membersToAdd -PassThru
+        $group | Add-AzADGroupMember -MemberObjectId $membersToAdd
     }
     else {
         Write-Information "No members to add"
@@ -108,11 +109,28 @@ function Assert-AzureAdGroupMembership
         $membersToRemove = $existingMemberObjectIds | Where-Object { $_ -notin $requiredMemberObjectIds }
         if ($membersToRemove) {
             Write-Information "Removing members: $($membersToRemove -join ', ')"
-            $group = $group | Remove-AzADGroupMember -MemberObjectId $membersToRemove -PassThru
+            $group | Remove-AzADGroupMember -MemberObjectId $membersToRemove
         }
         else {
             Write-Information "No members to remove"
         }
     }
 
+}
+
+function _getGroupMembers {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)]
+        [guid] $groupObjectId
+    )
+
+    # Workaround current limitation in Azure PowerShell whereby 'Get-AzADGroupMember' does not
+    # return service principal members
+    # ref: https://docs.microsoft.com/en-us/powershell/azure/troubleshooting?view=azps-7.5.0#get-azadgroupmember-doesnt-return-service-principals 
+    
+    Invoke-AzRestMethod -Uri "https://graph.microsoft.com/beta/groups/$($groupObjectId.Guid)/members" |
+        Select-Object -ExpandProperty Content |
+        ConvertFrom-Json |
+        Select-Object -ExpandProperty value
 }

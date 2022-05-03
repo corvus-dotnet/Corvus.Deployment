@@ -9,7 +9,6 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".Tests.ps1", ".p
 # define other functions that will be mocked
 function _EnsureAzureConnection {}
 function Get-AzADGroup {}
-function Get-AzADGroupMember {}
 function Add-AzADGroupMember { param([string[]] $MemberObjectId) }
 function Remove-AzADGroupMember { param([string[]] $MemberObjectId) }
 
@@ -62,7 +61,7 @@ Describe "Assert-AzureAdGroupMembership Tests" {
     Context "Required members are already in the group (one member)" {
 
         Mock Get-AzADGroup { $mockGroup }
-        Mock Get-AzADGroupMember { $mockGroupMembers[0] }
+        Mock _getGroupMembers { $mockGroupMembers[0] }
         Mock Get-AzureAdDirectoryObject { $mockGroupMembers[0] }
         Mock Add-AzADGroupMember {}
         Mock Remove-AzADGroupMember {}
@@ -81,7 +80,7 @@ Describe "Assert-AzureAdGroupMembership Tests" {
     Context "Required members are already in the group (multiple members)" {
 
         Mock Get-AzADGroup { $mockGroup }
-        Mock Get-AzADGroupMember { $mockGroupMembers }
+        Mock _getGroupMembers { $mockGroupMembers }
         Mock Get-AzureAdDirectoryObject { $mockGroupMembers[0] } -ParameterFilter { $Criterion -eq $mockGroupMembers[0].Id }
         Mock Get-AzureAdDirectoryObject { $mockGroupMembers[1] } -ParameterFilter { $Criterion -eq $mockGroupMembers[1].Id }
         Mock Add-AzADGroupMember {}
@@ -101,7 +100,7 @@ Describe "Assert-AzureAdGroupMembership Tests" {
     Context "Missing single member" {
 
         Mock Get-AzADGroup { $mockGroup }
-        Mock Get-AzADGroupMember { $mockGroupMembers[0] }
+        Mock _getGroupMembers { $mockGroupMembers[0] }
         Mock Get-AzureAdDirectoryObject { $mockGroupMembers[0] } -ParameterFilter { $Criterion -eq $mockGroupMembers[0].Id }
         Mock Get-AzureAdDirectoryObject { $mockGroupMembers[1] } -ParameterFilter { $Criterion -eq $mockGroupMembers[1].Id }
         Mock Add-AzADGroupMember {}
@@ -121,7 +120,7 @@ Describe "Assert-AzureAdGroupMembership Tests" {
     Context "Missing multiple members" {
 
         Mock Get-AzADGroup { $mockGroup }
-        Mock Get-AzADGroupMember { @() }
+        Mock _getGroupMembers { @() }
         Mock Get-AzureAdDirectoryObject { $mockGroupMembers[0] } -ParameterFilter { $Criterion -eq $mockGroupMembers[0].Id }
         Mock Get-AzureAdDirectoryObject { $mockGroupMembers[1] } -ParameterFilter { $Criterion -eq $mockGroupMembers[1].Id }
         Mock Add-AzADGroupMember {}
@@ -142,7 +141,7 @@ Describe "Assert-AzureAdGroupMembership Tests" {
     Context "Additional members are already in the group (Non-Strict)" {
 
         Mock Get-AzADGroup { $mockGroup }
-        Mock Get-AzADGroupMember { $mockGroupMembers }
+        Mock _getGroupMembers { $mockGroupMembers }
         Mock Get-AzureAdDirectoryObject { $mockGroupMembers[0] }
         Mock Add-AzADGroupMember {}
         Mock Remove-AzADGroupMember {}
@@ -160,7 +159,7 @@ Describe "Assert-AzureAdGroupMembership Tests" {
     Context "Additional members are already in the group (Strict)" {
 
         Mock Get-AzADGroup { $mockGroup }
-        Mock Get-AzADGroupMember { $mockGroupMembers }
+        Mock _getGroupMembers { $mockGroupMembers }
         Mock Get-AzureAdDirectoryObject { $mockGroupMembers[0] }
         Mock Add-AzADGroupMember {}
         Mock Remove-AzADGroupMember {}
@@ -182,7 +181,7 @@ Describe "Assert-AzureAdGroupMembership Tests" {
         $requiredMembers = $mockGroupMembers
 
         Mock Get-AzADGroup { $mockGroup }
-        Mock Get-AzADGroupMember { @($mockExistingMembers[0], $mockExistingMembers[2]) }
+        Mock _getGroupMembers { @($mockExistingMembers[0], $mockExistingMembers[2]) }
         Mock Get-AzureAdDirectoryObject { $mockExistingMembers[0] } -ParameterFilter { $Criterion -eq $mockExistingMembers[0].Id }
         Mock Get-AzureAdDirectoryObject { $mockExistingMembers[1] } -ParameterFilter { $Criterion -eq $mockExistingMembers[1].Id }
         Mock Get-AzureAdDirectoryObject { $mockExistingMembers[2] } -ParameterFilter { $Criterion -eq $mockExistingMembers[2].Id }
@@ -205,7 +204,7 @@ Describe "Assert-AzureAdGroupMembership Tests" {
 
     Context "Adding an invalid member" {
         Mock Get-AzADGroup { $mockGroup }
-        Mock Get-AzADGroupMember { @() }
+        Mock _getGroupMembers { @() }
         Mock Get-AzureAdDirectoryObject {} -ParameterFilter { $Criterion -eq [guid]::Empty }
         Mock Add-AzADGroupMember {}
         Mock Remove-AzADGroupMember {}
