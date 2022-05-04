@@ -13,8 +13,9 @@ this module requires an explicit connection to be setup.
 This function uses the provided details to ensure an authenticated session for both the
 Az PowerShell Cmdlets and the AzureCLI exists for the specified Tenant/Subscription.
 
-The function attempts to detect when running interactively to enable a manual login if not already
-authenticated.
+If not already authenticated, the function will use the 'AZURE_CLIENT_ID' and 'AZURE_CLIENT_SECRET'
+environment variables to connect as a service principal.  Failing that, it attempts to detect when running
+interactively to support a manual login.
 
 NOTE: It is intended that other functions within this module that use either of these 2 tools must validate
 that a connection has been setup.
@@ -30,6 +31,10 @@ When true, a connection to Azure via the Az PowerShell cmdlets will not be initi
 
 .PARAMETER SkipAzureCli
 When true, a connection to Azure via the AzureCLI will not be initialised.
+
+.PARAMETER TenantOnly
+When true, the connection will not be attached to a subscription. This is useful when working with
+identities that have no permissions to Azure resources (e.g. used only for Azure Active Directory automation).
 
 #>
 
@@ -60,15 +65,25 @@ function Connect-Azure
         Write-Host "Connecting with 'TenantOnly' option"
     }
 
-    # Attempt to detect if we're running interactively
+    # Attempt to detect if we're running interactively or inside a build server
     $isInteractive = [Environment]::UserInteractive -and !(Test-Path env:\SYSTEM_TEAMFOUNDATIONSERVERURI)
+
+    # Check whether the required environment variables are available to enable an auto-login
+    $requiredEnvVarsForAutoLogin = (
+        ![string]::IsNullOrEmpty($env:AZURE_CLIENT_ID) -and `
+        ![string]::IsNullOrEmpty($env:AZURE_CLIENT_SECRET)
+    )
 
     if (-not $SkipAzPowerShell) {
         Write-Host "Validating Az PowerShell connection"
         
         $ctx = Get-AzContext
-        if (!$ctx -and $isInteractive) {
-            Write-Host "Not currently logged-in to Az PowerShell - triggering manual login"
+        if (!$ctx) {
+            # Not currently connected, however the command supports attempting to login using convention-based
+            # environment variables or using the Azure PowerShell's default interactive flow.
+            $shouldAttemptLogin = $false
+
+            # Setup common parameters for connecting to Azure
             $connectSplat = @{
                 TenantId = $AadTenantId
             }
@@ -77,7 +92,31 @@ function Connect-Azure
                     SubscriptionId = $SubscriptionId
                 }
             }
-            Connect-AzAccount @connectSplat | Out-Null
+
+            if ($requiredEnvVarsForAutoLogin) {
+                # Setup parameters for a service principal login using the environment variables
+                Write-Host "Not currently logged-in to Az PowerShell - attempting login via environment variables [ClientId=$env:AZURE_CLIENT_ID]"
+                $userPassword = ConvertTo-SecureString -String $env:AZURE_CLIENT_SECRET -AsPlainText -Force
+                $pscredential = New-Object -TypeName System.Management.Automation.PSCredential($env:AZURE_CLIENT_ID, $userPassword)
+                $connectSplat += @{
+                    ServicePrincipal = $true
+                    Credential = $pscredential
+                }
+                $shouldAttemptLogin = $true
+            }
+            elseif ($isInteractive) {
+                # Fallback to attempting a manual login
+                Write-Host "Not currently logged-in to Az PowerShell - triggering manual login"
+                $shouldAttemptLogin = $true
+            }
+
+            # Attempt to login to Azure PowerShell
+            if ($shouldAttemptLogin) {
+                Connect-AzAccount @connectSplat | Out-Null
+            }
+            else {
+                throw "Not currently connected to Azure PowerShell and unable to attempt an auto or manual login.  For unattended scenarios set the 'AZURE_CLIENT_ID' and 'AZURE_CLIENT_SECRET' environment variables."
+            }
         }
         elseif ($ctx -and `
                     $ctx.Tenant.Id -eq $AadTenantId -and `

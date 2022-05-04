@@ -19,6 +19,10 @@ The target Azure Subscription ID.
 .PARAMETER AadTenantId
 The AzureAD Tenant ID associated with subscription.
 
+.PARAMETER TenantOnly
+When true, the connection will not be attached to a subscription. This is useful when working with
+identities that have no permissions to Azure resources (e.g. used only for Azure Active Directory automation).
+
 .OUTPUTS
 Returns the details of the logged-in account (i.e. the output from 'az account show').
 
@@ -50,8 +54,12 @@ function Assert-AzCliLogin {
         }
     }
     catch {
+        $requiredEnvVarsForAutoLogin = (
+            ![string]::IsNullOrEmpty($env:AZURE_CLIENT_ID) -and `
+            ![string]::IsNullOrEmpty($env:AZURE_CLIENT_SECRET)
+        )
         # login with the typical environment variables, if available
-        if ( (Test-Path env:\AZURE_CLIENT_ID) -and (Test-Path env:\AZURE_CLIENT_SECRET) ) {
+        if ($requiredEnvVarsForAutoLogin) {
             Write-Host "Performing azure-cli login as service principal via environment variables"
             $azCliParams = @(
                 "login"
