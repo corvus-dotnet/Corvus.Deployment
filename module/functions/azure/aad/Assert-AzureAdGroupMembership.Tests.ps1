@@ -17,8 +17,8 @@ Describe "Assert-AzureAdGroupMembership Tests" {
     Mock _EnsureAzureConnection { $true }
 
     $mockDuplicateGroups = @(
-        @{Id="00000000-0000-0000-0000-000000000000"; DisplayName="fakeGroup1"; SecurityEnabled=$true}
-        @{Id="11111111-1111-1111-1111-111111111111"; DisplayName="fakeGroup2"; SecurityEnabled=$true}
+        @{Id="00000000-0000-0000-0000-000000000000"; DisplayName="a-common-group-name"; SecurityEnabled=$true}
+        @{Id="11111111-1111-1111-1111-111111111111"; DisplayName="a-common-group-name"; SecurityEnabled=$true}
     )
 
     $mockGroup = @{
