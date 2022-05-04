@@ -68,7 +68,7 @@ function Assert-AzureAdSecurityGroup
     if ($existingGroup) {
         Write-Host "Security group with name $($existingGroup.displayName) already exists."
 
-        if ($ownersToAssignObjectIds -and $StrictMode) {
+        if ($ownersToAssignObjectIds) {
             $existingOwners = _getGroupOwners -GroupObjectId $existingGroup.id
 
             $ownersToAssignObjectIds | ForEach-Object {

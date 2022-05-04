@@ -33,7 +33,7 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
         Mock _getGroupOwners {}
         Mock Invoke-AzRestMethod { @{Content = ($mockCreatedGroup | ConvertTo-Json)} } -ParameterFilter { $Method -eq "POST" -and $Uri.EndsWith("/groups") }
 
-        Context "No default owners specified" {
+        Context "No group owners specified" {
             $testGroup = $baseMockGroup.Clone() + @{                
                 OwnersToAssignOnCreation = @()
                 StrictMode = $false
@@ -60,7 +60,7 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
             }
         }
 
-        Context "Default owner specified" {
+        Context "Group owner specified" {
             $testGroup = $baseMockGroup.Clone() + @{
                 OwnersToAssignOnCreation = @("someone@nowhere.org")
                 StrictMode = $false
@@ -88,7 +88,7 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
             }
         }
 
-        Context "Multiple default owners specified" {
+        Context "Multiple group owners specified" {
             $testGroup = $baseMockGroup.Clone() + @{
                 OwnersToAssignOnCreation = @("someone@nowhere.org","MyServicePrincipal")
                 StrictMode = $false
@@ -123,7 +123,7 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
         }
 
         # Added to catch a previous bug
-        Context "Invaild owners specified - multiple empty string owners" {
+        Context "Invalid group owners specified - multiple empty string owners" {
             $testGroup = $baseMockGroup.Clone() + @{
                 OwnersToAssignOnCreation = @("","")
                 StrictMode = $false
@@ -175,7 +175,7 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
         Mock Get-AzureAdDirectoryObject { $mockOwnerObjectId }
         Mock Write-Warning {}
 
-        Context "No default owners - No changes required" {
+        Context "Up-to-date group with no specified owners" {
             $testGroup = $baseMockGroup.Clone() + @{
                 OwnersToAssignOnCreation = @()
                 StrictMode = $false
@@ -198,12 +198,18 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
         }
 
         $updatedGroupDesc = 'just a test group with a different description'
-        Context "Description updated (StrictMode=false)" {
-            $testGroup = $baseMockGroup.Clone() + @{
+        Context "Outdated group with no specified owners (StrictMode=false)" {
+            $mockUpdatedGroup = $mockExistingGroup.Clone()
+            $mockUpdatedGroup.Description = $updatedGroupDesc
+            Mock Get-AzADGroup { $mockUpdatedGroup } -ParameterFilter { $ObjectId }
+
+            $testGroup = $baseMockGroup.Clone()
+            $testGroup.Remove("Description")
+            $testGroup += @{
+                Description = $updatedGroupDesc
                 OwnersToAssignOnCreation = @()
                 StrictMode = $false
             }
-            Mock Get-AzADGroup { $mockExistingGroup } -ParameterFilter { $ObjectId }
 
             $res = Assert-AzureAdSecurityGroup @testGroup
 
@@ -220,7 +226,7 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
             }
         }
 
-        Context "Description updated (StrictMode=true)" {
+        Context "Outdated group with no specified owners (StrictMode=true)" {
 
             $mockUpdatedGroup = $mockExistingGroup.Clone()
             $mockUpdatedGroup.Description = $updatedGroupDesc
@@ -253,9 +259,9 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
             }
         }
 
-        Context "Default owners - No changes required" {
+        Context "Up-to-date group with additional owner specified" {
             $testGroup = $baseMockGroup.Clone() + @{
-                OwnersToAssignOnCreation = @('anothergroup@nowhere.com')
+                OwnersToAssignOnCreation = @('new-owner@nowhere.com')
                 StrictMode = $false
             }
             $res = Assert-AzureAdSecurityGroup @testGroup
@@ -267,16 +273,25 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
             }
             It "should not update the group" {
                 Assert-MockCalled _buildCreateRequest -Times 0
-                Assert-MockCalled _getGroupOwners -Times 0
+                Assert-MockCalled _getGroupOwners -Times 1
                 Assert-MockCalled Get-AzureAdDirectoryObject -Times 1
-                Assert-MockCalled Write-Warning -Times 0
                 Assert-MockCalled Invoke-AzRestMethod -Times 0
+            }
+            It "should log a warning that the owners cannot be updated" {
+                Assert-MockCalled Write-Warning -Times 1
             }
         }
 
-        Context "Default owners - owner missing (StrictMode=false)" {
-            $testGroup = $baseMockGroup.Clone() + @{
-                OwnersToAssignOnCreation = @('someone@nowhere.org')
+        Context "Outdated group with additional owner specified (StrictMode=false)" {
+            $mockUpdatedGroup = $mockExistingGroup.Clone()
+            $mockUpdatedGroup.Description = $updatedGroupDesc
+            Mock Get-AzADGroup { $mockUpdatedGroup } -ParameterFilter { $ObjectId }
+
+            $testGroup = $baseMockGroup.Clone()
+            $testGroup.Remove("Description")
+            $testGroup += @{
+                Description = $updatedGroupDesc
+                OwnersToAssignOnCreation = @('new-owner@nowhere.com')
                 StrictMode = $false
             }
             $res = Assert-AzureAdSecurityGroup @testGroup
@@ -288,31 +303,47 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
             }
             It "should not update the group" {
                 Assert-MockCalled _buildCreateRequest -Times 0
-                Assert-MockCalled _getGroupOwners -Times 0
+                Assert-MockCalled _getGroupOwners -Times 1
                 Assert-MockCalled Get-AzureAdDirectoryObject -Times 1
-                Assert-MockCalled Write-Warning -Times 0
                 Assert-MockCalled Invoke-AzRestMethod -Times 0
+            }
+            It "should log a warning that the owners cannot be updated" {
+                Assert-MockCalled Write-Warning -Times 1
             }
         }
 
-        Context "Default owners - owner missing (StrictMode=true)" {
-            $testGroup = $baseMockGroup.Clone() + @{
-                OwnersToAssignOnCreation = @('someone@nowhere.org')
+        Context "Outdated group with additional owner specified (StrictMode=true)" {
+            $mockUpdatedGroup = $mockExistingGroup.Clone()
+            $mockUpdatedGroup.Description = $updatedGroupDesc
+            Mock Get-AzADGroup { $mockUpdatedGroup } -ParameterFilter { $ObjectId }
+
+            $testGroup = $baseMockGroup.Clone()
+            $testGroup.Remove("Description")
+            $testGroup += @{
+                Description = $updatedGroupDesc
+                OwnersToAssignOnCreation = @('new-owner@nowhere.com')
                 StrictMode = $true
             }
             $res = Assert-AzureAdSecurityGroup @testGroup
 
-            It "should return the existing group" {
-                $res.DisplayName | Should -Be $mockExistingGroup.DisplayName
-                $res.mailEnabled | Should -Be $mockExistingGroup.mailEnabled
-                Assert-MockCalled Get-AzADGroup -ParameterFilter { $ObjectId } -Times 0
+            It "should return the updated group" {
+                $res.DisplayName | Should -Be $testGroup.DisplayName
+                $res.Description | Should -Be $updatedGroupDesc
+                Assert-MockCalled Get-AzADGroup -ParameterFilter { $ObjectId -eq $groupObjectId } -Times 1
             }
-            It "should not update the group and warn the owners cannot be updated" {
+            It "should update the group" {
                 Assert-MockCalled _buildCreateRequest -Times 0
                 Assert-MockCalled _getGroupOwners -Times 1
                 Assert-MockCalled Get-AzureAdDirectoryObject -Times 1
+                Assert-MockCalled Invoke-AzRestMethod -Times 1 `
+                    -ParameterFilter {
+                        $Method -eq "PATCH" -and `
+                        $Uri -eq "https://graph.microsoft.com/v1.0/groups/$groupObjectId" -and `
+                        $Payload -notmatch "owners" -and $Payload -match $updatedGroupDesc
+                    }
+            }
+            It "should log a warning that the owners cannot be updated" {
                 Assert-MockCalled Write-Warning -Times 1
-                Assert-MockCalled Invoke-AzRestMethod -Times 0
             }
         }
 
