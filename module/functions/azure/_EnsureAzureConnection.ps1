@@ -19,14 +19,17 @@ function _EnsureAzureConnection
         [switch] $AzPowerShell,
 
         [Parameter()]
-        [switch] $AzureCli
+        [switch] $AzureCli,
+
+        [Parameter()]
+        [switch] $TenantOnly
     )
 
     function _validateAzPowerShell
     {
         $valid = (
             $script:moduleContext.AzPowerShell.Connected -and `
-            (_ValidateAzureConnectionDetails -SubscriptionId $script:moduleContext.SubscriptionId -AadTenantId $script:moduleContext.AadTenantId -AzPowerShell)
+            (_ValidateAzureConnectionDetails -SubscriptionId $script:moduleContext.SubscriptionId -AadTenantId $script:moduleContext.AadTenantId -AzPowerShell -TenantOnly:$TenantOnly)
         )
         return $valid
 
@@ -35,7 +38,7 @@ function _EnsureAzureConnection
     {
         $valid = (
             $script:moduleContext.AzureCli.Connected -and `
-            (_ValidateAzureConnectionDetails -SubscriptionId $script:moduleContext.SubscriptionId -AadTenantId $script:moduleContext.AadTenantId -AzureCli)
+            (_ValidateAzureConnectionDetails -SubscriptionId $script:moduleContext.SubscriptionId -AadTenantId $script:moduleContext.AadTenantId -AzureCli -TenantOnly:$TenantOnly)
         )
         return $valid
     }

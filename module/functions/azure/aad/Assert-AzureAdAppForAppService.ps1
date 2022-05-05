@@ -31,8 +31,8 @@ function Assert-AzureAdAppForAppService
         [string] $AppId
     )
 
-    # Check whether we have a valid AzPowerShell connection
-    _EnsureAzureConnection -AzPowerShell -ErrorAction Stop
+    # Check whether we have a valid AzPowerShell connection, but no subscription-level access is required
+    _EnsureAzureConnection -AzPowerShell -TenantOnly -ErrorAction Stop | Out-Null
     
     if ( !(Test-AzureGraphAccess) ) {
         if (-not $AppId) {

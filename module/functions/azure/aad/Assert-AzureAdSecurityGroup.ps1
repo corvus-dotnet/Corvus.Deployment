@@ -1,4 +1,4 @@
-# <copyright file="Assert-AzureAdGroup.ps1" company="Endjin Limited">
+# <copyright file="Assert-AzureAdSecurityGroup.ps1" company="Endjin Limited">
 # Copyright (c) Endjin Limited. All rights reserved.
 # </copyright>
 
@@ -7,20 +7,27 @@
 Creates or updates a AzureAD group.
 
 .DESCRIPTION
-Uses the azure-cli to configure an AzureAD group.
+Uses Azure PowerShell to create an AzureAD security group.  This function assumes that the caller will not have full AzureAD
+permissions (i.e. 'Group.Create' instead of 'Group.ReadWrite.All') as this is typically the case for least-privilege
+automation scenarios.  It therefore assumes that group owners can only be configured as part of the creation request, as this
+is supported for callers with 'Group.Create' permissions.
 
-.PARAMETER Name
+.PARAMETER DisplayName
 The display name of the group.
 
-.PARAMETER EmailName
+.PARAMETER MailNickname
 The username portion of the email address associated with the group
 
 .PARAMETER Description
 The description of the group
 
 .PARAMETER OwnersToAssignOnCreation
-The object IDs of the principals to assign as owners to the group.
-Note, that if the group already exists, we will not attempt to assign the owners (as the principal may not have sufficient privileges)
+The DisplayName, UserPrincipalName, ObjectId or ApplicationId of the users, groups, service principals to assign as owners to the group.
+Note, that if the group already exists, we will not attempt to assign the owners (see the note in the description for more details)
+
+.PARAMETER StrictMode
+When true, the group's description forms part of the idempotency check.  If the specified description does not match the group's
+definition in AzureAD, then it will be updated to ensure it matches.
 
 .OUTPUTS
 AzureAD group definition object
@@ -30,105 +37,147 @@ function Assert-AzureAdSecurityGroup
 {
     [CmdletBinding()]
     param (
+        [Alias("Name")]
         [Parameter(Mandatory=$true)]
-        [string] $Name,
+        [string] $DisplayName,
 
+        [Alias("EmailName")]
         [Parameter(Mandatory=$true)]
-        [string] $EmailName,
+        [string] $MailNickname,
 
         [Parameter()]
         [string] $Description,
 
         [Parameter()]
-        [string[]] $OwnersToAssignOnCreation
+        [string[]] $OwnersToAssignOnCreation,
+
+        [Parameter()]
+        [bool] $StrictMode = $true      # default to true, to ensure backwards-compatible behaviour
     )
 
-    function _updateGroup{
-        if ($Description -ine $existingGroup.description -and ![string]::IsNullOrEmpty($Description)) {
-            Write-Host "Description field has changed. Updating..."
-
-            $updateBody = @{
-                displayName = $existingGroup.displayName
-                mailNickname = $existingGroup.mailNickname
-                mailEnabled = $existingGroup.mailEnabled
-                securityEnabled = $existingGroup.securityEnabled
-                description = $Description                
-            }
-        
-            $updateBodyToJson = (ConvertTo-Json $updateBody -Compress).replace('"','\"').replace(':\', ': \').replace("'", "''")
-
-            $updateCmd = "rest --uri 'https://graph.microsoft.com/v1.0/groups/$($existingGroup.Id)' --method 'PATCH' --body '$updateBodyToJson' --headers content-type=application/json"
-
-            Invoke-AzCli -Command $updateCmd -asJson
-
-            Write-Host "Description field updated."
-
-            $existingGroup.description = $Description
-
-            return $existingGroup
-        }
-        else {
-            return $existingGroup
-        }
-    }
-
-    function _createGroup{
-        $body = @{
-            displayName = $Name
-            mailNickname = $EmailName
-            mailEnabled = $false
-            securityEnabled = $true
-            
-        }
-
-        if ($OwnersToAssignOnCreation) {
-            $body["owners@odata.bind"] = @()
-            $body["owners@odata.bind"] += $OwnersToAssignOnCreation | ForEach-Object {
-                "https://graph.microsoft.com/v1.0/directoryObjects/$_"
-            }
-        }
+    # Check whether we have a valid AzPowerShell connection, but no subscription-level access is required
+    _EnsureAzureConnection -AzPowerShell -TenantOnly -ErrorAction Stop | Out-Null
     
-        if ($Description) {
-            $body["description"] = $Description
-        }
-    
-        $bodyToJson = (ConvertTo-Json $body -Compress -Depth 99).replace('"','\"').replace(':\', ': \').replace("'", "''")
-    
-        $cmd = "rest --uri 'https://graph.microsoft.com/v1.0/groups' --method 'POST' --body '$bodyToJson' --headers content-type=application/json"
-        
-        $response = Invoke-AzCli -Command $cmd -asJson
+    $existingGroup = Get-AzADGroup -DisplayName $DisplayName
 
-        return $response
-    }
-
-    $existingGroupCmd = 'rest --uri "https://graph.microsoft.com/v1.0/groups?`$filter=displayName eq {0}" --method "GET"' -f "`'$name`'"
-
-    $existingGroup = (Invoke-AzCli -Command $existingGroupCmd -asJson).value[0]
+    # Resolve the ObjectId for any specified owners
+    $ownersToAssignObjectIds = $OwnersToAssignOnCreation |
+                                    Where-Object { $_ } |
+                                    ForEach-Object { Get-AzureAdDirectoryObject -Criterion $_ }
 
     if ($existingGroup) {
         Write-Host "Security group with name $($existingGroup.displayName) already exists."
 
-        if ($OwnersToAssignOnCreation) {
-            $groupOwnersIds = (Invoke-AzCliRestCommand -Uri "https://graph.microsoft.com/beta/groups/$($existingGroup.id)/owners").value | ForEach-Object {
-                $_.id
-            }
+        if ($ownersToAssignObjectIds) {
+            $existingOwners = _getGroupOwners -GroupObjectId $existingGroup.id
 
-            $OwnersToAssignOnCreation | ForEach-Object {
-                if ($_ -notin $groupOwnersIds) {
-                    Write-Warning "Object ID '$_' was specified to be assigned as group owner, but group already exists so we cannot do the assignment."
+            $ownersToAssignObjectIds | ForEach-Object {
+                if ($_ -notin $existingOwners) {
+                    Write-Warning "Object ID '$_' was specified to be assigned as group owner, but group already exists and the ownership cannot be updated."
                 }
             }
         }
 
-        $result = _updateGroup
+        $requestParams = _buildUpdateRequest
+        if ($requestParams) {
+            Write-Host "Security group needs to be updated..."
+        }
     }
     else {
-        Write-Host "Security group with name $Name doesn't exist. Creating..."
-
-        $result = _createGroup
-
-        Write-Host "AAD Security group created."
+        Write-Host "Security group with name $DisplayName doesn't exist. Creating..."
+        $requestParams = _buildCreateRequest -OwnersObjectIds ($ownersToAssignObjectIds | Select-Object -ExpandProperty id)
     }
 
-    return $result
+    if ($requestParams) {
+        $resp = Invoke-AzRestMethod @requestParams
+        if ($resp.StatusCode -ge 400) {
+            $errorMessage = "AAD Security group processing failed: $($resp.Content | ConvertFrom-Json | Select-Object -ExpandProperty error)"
+            throw $errorMessage
+        }
+        Write-Host "AAD Security group processing complete"
+
+        $existingGroup = Get-AzADGroup -ObjectId ($existingGroup ? $existingGroup.id : ($resp.Content | ConvertFrom-Json).id)
+    }
+
+    return $existingGroup
+}
+
+function _buildUpdateRequest {
+    if ($StrictMode -and $Description -ine $existingGroup.description -and ![string]::IsNullOrEmpty($Description)) {
+        Write-Host "Description field has changed. Updating..."
+
+        $updateBody = @{
+            displayName = $existingGroup.displayName
+            mailNickname = $existingGroup.mailNickname
+            mailEnabled = $existingGroup.mailEnabled
+            securityEnabled = $existingGroup.securityEnabled
+            description = $Description                
+        }
+    
+        $restParams = @{
+            Uri = "https://graph.microsoft.com/v1.0/groups/$($existingGroup.Id)"
+            Method = "PATCH"
+            Payload = ($updateBody | ConvertTo-Json -Depth 3 -Compress)
+        }
+
+        return $restParams
+    }
+    else {
+        return $null
+    }
+}
+
+function _buildCreateRequest {
+    param (
+        [guid[]] $OwnersObjectIds
+    )
+
+    $body = @{
+        displayName = $DisplayName
+        mailNickname = $MailNickname
+        mailEnabled = $false
+        securityEnabled = $true
+    }
+
+    if ($OwnersObjectIds) {
+        $body["owners@odata.bind"] = @()
+        $body["owners@odata.bind"] += ($OwnersObjectIds | 
+                Where-Object { $_ } |
+                ForEach-Object {
+                    "https://graph.microsoft.com/v1.0/directoryObjects/$($_.ToString())"
+                })
+    }
+
+    if ($Description) {
+        $body["description"] = $Description
+    }
+
+    $restParams = @{
+        Uri = "https://graph.microsoft.com/v1.0/groups"
+        Method = "POST"
+        Payload = ($body | ConvertTo-Json -Depth 3 -Compress)
+    }
+
+    return $restParams
+}
+
+function _getGroupOwners {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)]
+        [string] $GroupObjectId
+    )
+
+    $resp = Invoke-AzRestMethod -Uri "https://graph.microsoft.com/v1.0/groups/$GroupObjectId/owners" |
+                Select-Object -ExpandProperty Content |
+                ConvertFrom-Json |
+                Select-Object -ExpandProperty value |
+                Select-Object -ExpandProperty id
+
+    if ($resp.StatusCode -ge 400) {
+        $errorMessage = "Failed to lookup existing group owners [ObjectId=$GroupObjectId]: $($resp.Content | ConvertFrom-Json | Select-Object -ExpandProperty error)"
+        throw $errorMessage
+    }
+
+    return $resp
 }

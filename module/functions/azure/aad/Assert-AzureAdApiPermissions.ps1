@@ -43,7 +43,8 @@ function Assert-AzureAdApiPermissions
         [guid] $ApplicationId
     )
 
-    _EnsureAzureConnection -AzPowerShell | Out-Null
+    # Check whether we have a valid AzPowerShell connection, but no subscription-level access is required
+    _EnsureAzureConnection -AzPowerShell -TenantOnly -ErrorAction Stop | Out-Null
     
     [hashtable[]] $accessRequirements = @()
     foreach ($permission in $ApplicationPermissions) {

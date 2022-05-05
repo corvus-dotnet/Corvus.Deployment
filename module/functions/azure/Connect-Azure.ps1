@@ -13,8 +13,9 @@ this module requires an explicit connection to be setup.
 This function uses the provided details to ensure an authenticated session for both the
 Az PowerShell Cmdlets and the AzureCLI exists for the specified Tenant/Subscription.
 
-The function attempts to detect when running interactively to enable a manual login if not already
-authenticated.
+If not already authenticated, the function will use the 'AZURE_CLIENT_ID' and 'AZURE_CLIENT_SECRET'
+environment variables to connect as a service principal.  Failing that, it attempts to detect when running
+interactively to support a manual login.
 
 NOTE: It is intended that other functions within this module that use either of these 2 tools must validate
 that a connection has been setup.
@@ -31,41 +32,95 @@ When true, a connection to Azure via the Az PowerShell cmdlets will not be initi
 .PARAMETER SkipAzureCli
 When true, a connection to Azure via the AzureCLI will not be initialised.
 
+.PARAMETER TenantOnly
+When true, the connection will not be attached to a subscription. This is useful when working with
+identities that have no permissions to Azure resources (e.g. used only for Azure Active Directory automation).
+
 #>
 
 function Connect-Azure
 {
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName="Default")]
     param (
-        [Parameter(Mandatory=$true)]
+        [Parameter(ParameterSetName="Default", Mandatory=$true)]
         [guid] $SubscriptionId,
 
         [Parameter(Mandatory=$true)]
         [guid] $AadTenantId,
 
         [switch] $SkipAzPowerShell,
-        [switch] $SkipAzureCli
+        [switch] $SkipAzureCli,
+
+        [Parameter(ParameterSetName="NoSubscriptions")]
+        [switch] $TenantOnly
     )
     
     # NOTE: This function is exempt from the test requiring consumers of AzPowerShell to call _EnsureAzureConnection
 
-    $script:moduleContext.SubscriptionId = $SubscriptionId
+    $script:moduleContext.TenantOnly = $TenantOnly
+    $script:moduleContext.SubscriptionId = $script:moduleContext.NoSubscriptions ? "" : $SubscriptionId
     $script:moduleContext.AadTenantId = $AadTenantId
 
-    # Attempt to detect if we're running interactively
+    if ($script:moduleContext.TenantOnly) {
+        Write-Host "Connecting with 'TenantOnly' option"
+    }
+
+    # Attempt to detect if we're running interactively or inside a build server
     $isInteractive = [Environment]::UserInteractive -and !(Test-Path env:\SYSTEM_TEAMFOUNDATIONSERVERURI)
+
+    # Check whether the required environment variables are available to enable an auto-login
+    $requiredEnvVarsForAutoLogin = (
+        ![string]::IsNullOrEmpty($env:AZURE_CLIENT_ID) -and `
+        ![string]::IsNullOrEmpty($env:AZURE_CLIENT_SECRET)
+    )
 
     if (-not $SkipAzPowerShell) {
         Write-Host "Validating Az PowerShell connection"
         
         $ctx = Get-AzContext
-        if (!$ctx -and $isInteractive) {
-            Write-Host "Not currently logged-in to Az PowerShell - triggering manual login"
-            Connect-AzAccount -SubscriptionId $SubscriptionId -TenantId $AadTenantId | Out-Null
+        if (!$ctx) {
+            # Not currently connected, however the command supports attempting to login using convention-based
+            # environment variables or using the Azure PowerShell's default interactive flow.
+            $shouldAttemptLogin = $false
+
+            # Setup common parameters for connecting to Azure
+            $connectSplat = @{
+                TenantId = $AadTenantId
+            }
+            if (!$TenantOnly) {
+                $connectSplat += @{
+                    SubscriptionId = $SubscriptionId
+                }
+            }
+
+            if ($requiredEnvVarsForAutoLogin) {
+                # Setup parameters for a service principal login using the environment variables
+                Write-Host "Not currently logged-in to Az PowerShell - attempting login via environment variables [ClientId=$env:AZURE_CLIENT_ID]"
+                $userPassword = ConvertTo-SecureString -String $env:AZURE_CLIENT_SECRET -AsPlainText -Force
+                $pscredential = New-Object -TypeName System.Management.Automation.PSCredential($env:AZURE_CLIENT_ID, $userPassword)
+                $connectSplat += @{
+                    ServicePrincipal = $true
+                    Credential = $pscredential
+                }
+                $shouldAttemptLogin = $true
+            }
+            elseif ($isInteractive) {
+                # Fallback to attempting a manual login
+                Write-Host "Not currently logged-in to Az PowerShell - triggering manual login"
+                $shouldAttemptLogin = $true
+            }
+
+            # Attempt to login to Azure PowerShell
+            if ($shouldAttemptLogin) {
+                Connect-AzAccount @connectSplat | Out-Null
+            }
+            else {
+                throw "Not currently connected to Azure PowerShell and unable to attempt an auto or manual login.  For unattended scenarios set the 'AZURE_CLIENT_ID' and 'AZURE_CLIENT_SECRET' environment variables."
+            }
         }
         elseif ($ctx -and `
                     $ctx.Tenant.Id -eq $AadTenantId -and `
-                    $ctx.Subscription.Id -ne $SubscriptionId
+                    (!$TenantOnly -and $ctx.Subscription.Id -ne $script:moduleContext.SubscriptionId)
         ) {
             # Try to switch to the required subscription, if we are connected to the right tenant.
             # This avoids an unnecessary validation failure when we're connected to the right tenant,
@@ -73,7 +128,7 @@ function Connect-Azure
             Set-AzContext -SubscriptionId $SubscriptionId | Out-Null
         }
 
-        if (!(_ValidateAzureConnectionDetails -SubscriptionId $SubscriptionId -AadTenantId $AadTenantId -AzPowerShell)) {
+        if (!(_ValidateAzureConnectionDetails -SubscriptionId $script:moduleContext.SubscriptionId -AadTenantId $AadTenantId -AzPowerShell -TenantOnly:$TenantOnly)) {
             Write-Error "The current Az PowerShell connection context does not match the specified details"
         }
         else {
@@ -83,9 +138,18 @@ function Connect-Azure
 
     if (-not $SkipAzureCli) {
         Write-Host "Validating AzureCLI connection"
-        Assert-AzCliLogin -SubscriptionId $SubscriptionId -AadTenantId $AadTenantId | Out-Null
+        $splat = @{
+            AadTenantId = $AadTenantId
+        }
+        if ($TenantOnly) {
+            $splat += @{ TenantOnly = $TenantOnly }
+        }
+        else {
+            $splat += @{ SubscriptionId = $script:moduleContext.SubscriptionId }
+        }
+        Assert-AzCliLogin @splat | Out-Null
         
-        if (!(_ValidateAzureConnectionDetails -SubscriptionId $SubscriptionId -AadTenantId $AadTenantId -AzureCli)) {
+        if (!(_ValidateAzureConnectionDetails -SubscriptionId $script:moduleContext.SubscriptionId -AadTenantId $AadTenantId -AzureCli -TenantOnly:$TenantOnly)) {
             Write-Error "The current AzureCLI connection context does not match the specified details."
         }
         else {

@@ -15,6 +15,7 @@ function _ValidateAzureConnectionDetails
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
+        [AllowEmptyString()]
         [string] $SubscriptionId,
 
         [Parameter(Mandatory=$true)]
@@ -24,7 +25,10 @@ function _ValidateAzureConnectionDetails
         [switch] $AzPowerShell,
 
         [Parameter()]
-        [switch] $AzureCli
+        [switch] $AzureCli,
+
+        [Parameter()]
+        [switch] $TenantOnly
     )
 
     # NOTE: This function is exempt from the test requiring consumers of AzPowerShell to call _EnsureAzureConnection
@@ -32,14 +36,16 @@ function _ValidateAzureConnectionDetails
     if ($AzPowerShell) {
         # Ensure PowerShell Az is connected with the details that have been provided
         $azContext = Get-AzContext
-        if ($azContext.Subscription.Id -eq $SubscriptionId -and `
+        if ( ($TenantOnly -or $azContext.Subscription.Id -eq $SubscriptionId) -and `
                 $azContext.Tenant.Id -eq $AadTenantId
         ) {
             return $true
         }
         else {
             Write-Warning "AzPowerShell connection failed validation"
-            Write-Warning "SubscriptionId: Specified [$SubscriptionId], Actual [$($azContext.Subscription.Id)]"
+            if (!$TenantOnly) {
+                Write-Warning "SubscriptionId: Specified [$SubscriptionId], Actual [$($azContext.Subscription.Id)]"
+            }
             Write-Warning "TenantId      : Specified [$AadTenantId], Actual [$($azContext.Tenant.Id)]"
             return $false
         }
@@ -52,14 +58,16 @@ function _ValidateAzureConnectionDetails
         }
         catch {}
 
-        if ($currentAccount.id -eq $SubscriptionId -and `
+        if ( ($TenantOnly -or $currentAccount.id -eq $SubscriptionId) -and `
                 $currentAccount.tenantId -eq $AadTenantId
         ) {
             return $true
         }
         else {
             Write-Warning "AzureCli connection failed validation"
-            Write-Warning "SubscriptionId: Specified [$SubscriptionId], Actual [$($currentAccount.id)]"
+            if (!$TenantOnly) {
+                Write-Warning "SubscriptionId: Specified [$SubscriptionId], Actual [$($currentAccount.id)]"
+            }
             Write-Warning "TenantId      : Specified [$AadTenantId], Actual [$($currentAccount.tenantId)]"
             return $false
         }
