@@ -1,4 +1,5 @@
 $ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
 $here = Split-Path -Parent $PSCommandPath
 $pesterVer = '4.10.1'
 try {

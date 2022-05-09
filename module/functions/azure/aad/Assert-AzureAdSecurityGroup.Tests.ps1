@@ -31,7 +31,7 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
         Mock Get-AzADGroup { $mockCreatedGroup } -ParameterFilter { $ObjectId }
         Mock _buildUpdateRequest {}
         Mock _getGroupOwners {}
-        Mock Invoke-AzRestMethod { @{Content = ($mockCreatedGroup | ConvertTo-Json)} } -ParameterFilter { $Method -eq "POST" -and $Uri.EndsWith("/groups") }
+        Mock Invoke-AzRestMethod { @{StatusCode = 200; Content = ($mockCreatedGroup | ConvertTo-Json)} } -ParameterFilter { $Method -eq "POST" -and $Uri.EndsWith("/groups") }
 
         Context "No group owners specified" {
             $testGroup = $baseMockGroup.Clone() + @{                
@@ -65,8 +65,8 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
                 OwnersToAssignOnCreation = @("someone@nowhere.org")
                 StrictMode = $false
             }
-            $mockOwnerObjectId = @{ id = [guid]::NewGuid().ToString() }
-            Mock Get-AzureAdDirectoryObject { $mockOwnerObjectId }
+            $mockOwners = @( @{ id = [guid]::NewGuid().ToString() } )
+            Mock Get-AzureAdDirectoryObject { $mockOwners }
 
             $res = Assert-AzureAdSecurityGroup @testGroup
 
@@ -83,7 +83,7 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
                     -ParameterFilter { 
                         $Method -eq "POST" -and `
                         $Uri -eq "https://graph.microsoft.com/v1.0/groups" -and `
-                        $Payload -match $mockOwnerObjectId.id
+                        $Payload -match $mockOwners.id
                     }
             }
         }
@@ -166,13 +166,13 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
             mailEnabled = $false
             securityEnabled = $true
         }
-        $mockOwnerObjectId = [guid]::NewGuid().ToString()
+        $mockOwners = @( @{ id = [guid]::NewGuid().ToString() } )
 
         Mock Get-AzADGroup { $mockExistingGroup } -ParameterFilter { $DisplayName }
         Mock _buildCreateRequest {}
         Mock _getGroupOwners { @('11111111-1111-1111-1111-111111111111') }
-        Mock Invoke-AzRestMethod {} -ParameterFilter { $Method -eq "PATCH" -and $Uri.EndsWith("/$groupObjectId") }
-        Mock Get-AzureAdDirectoryObject { $mockOwnerObjectId }
+        Mock Invoke-AzRestMethod { @{StatusCode = 200 } } -ParameterFilter { $Method -eq "PATCH" -and $Uri.EndsWith("/$groupObjectId") }
+        Mock Get-AzureAdDirectoryObject { $mockOwners }
         Mock Write-Warning {}
 
         Context "Up-to-date group with no specified owners" {
