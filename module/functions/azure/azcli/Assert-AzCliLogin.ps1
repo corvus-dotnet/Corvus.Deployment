@@ -64,8 +64,8 @@ function Assert-AzCliLogin {
             $azCliParams = @(
                 "login"
                 "--service-principal"
-                "-u `"{0}`"" -f $env:AZURE_CLIENT_ID
-                "-p `"{1}`"" -f $env:AZURE_CLIENT_SECRET
+                "-u `"$($env:AZURE_CLIENT_ID)`""
+                "-p `"$($env:AZURE_CLIENT_SECRET)`""
                 "--tenant $AadTenantId"
             )
             if ($TenantOnly) {
