@@ -73,7 +73,7 @@ function Assert-AzureAdSecurityGroup
 
             $ownersToAssignObjectIds | ForEach-Object {
                 if ($_ -notin $existingOwners) {
-                    Write-Warning "Object ID '$_' was specified to be assigned as group owner, but group already exists and the ownership cannot be updated."
+                    Write-Warning "Object ID '$($_.id)' was specified to be assigned as group owner, but group already exists and the ownership cannot be updated."
                 }
             }
         }
