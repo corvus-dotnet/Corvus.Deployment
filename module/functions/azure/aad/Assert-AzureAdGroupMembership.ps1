@@ -122,14 +122,14 @@ function _getGroupMembers {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [guid] $groupObjectId
+        [guid] $GroupObjectId
     )
 
-    # Workaround current limitation in Azure PowerShell whereby 'Get-AzADGroupMember' does not
-    # return service principal members
+    # May-2022: Workaround a current limitation, whereby service principal group members are not returned by the v1.0 MS Graph API
     # ref: https://docs.microsoft.com/en-us/powershell/azure/troubleshooting?view=azps-7.5.0#get-azadgroupmember-doesnt-return-service-principals 
+    # ref: https://docs.microsoft.com/en-us/graph/api/group-list-members?view=graph-rest-1.0&tabs=http
     
-    Invoke-AzRestMethod -Uri "https://graph.microsoft.com/beta/groups/$($groupObjectId.Guid)/members" |
+    Invoke-AzRestMethod -Uri "https://graph.microsoft.com/beta/groups/$($GroupObjectId.Guid)/members" |
         Select-Object -ExpandProperty Content |
         ConvertFrom-Json |
         Select-Object -ExpandProperty value

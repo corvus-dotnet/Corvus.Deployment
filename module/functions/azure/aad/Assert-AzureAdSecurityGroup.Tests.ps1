@@ -166,11 +166,13 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
             mailEnabled = $false
             securityEnabled = $true
         }
-        $mockOwners = @( @{ id = [guid]::NewGuid().ToString() } )
+        $mockExistingOwners = @( @{ id = [guid]::NewGuid().ToString(); displayName = "fake-existing-owner" } )
+        $mockOwners = @( @{ id = [guid]::NewGuid().ToString(); displayName = "fake-owner" } )
 
         Mock Get-AzADGroup { $mockExistingGroup } -ParameterFilter { $DisplayName }
         Mock _buildCreateRequest {}
-        Mock _getGroupOwners { @('11111111-1111-1111-1111-111111111111') }
+        # Mock _getGroupOwners { @('') }
+        Mock Invoke-AzRestMethod { @{StatusCode = 200; Content = "{ `"value`": [ $($mockExistingOwners | ConvertTo-Json -Compress) ] }" } } -ParameterFilter { $Method -eq "GET" -and $Uri.EndsWith("/owners") }
         Mock Invoke-AzRestMethod { @{StatusCode = 200 } } -ParameterFilter { $Method -eq "PATCH" -and $Uri.EndsWith("/$groupObjectId") }
         Mock Get-AzureAdDirectoryObject { $mockOwners }
         Mock Write-Warning {}
@@ -191,9 +193,20 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
             }
             It "should not update the group" {
                 Assert-MockCalled _buildCreateRequest -Times 0
-                Assert-MockCalled _getGroupOwners -Times 0
+                Assert-MockCalled Invoke-AzRestMethod -Times 0 `
+                    -ParameterFilter {
+                        $Method -eq "GET" -and `
+                        $Uri.EndsWith("/owners")
+                    }
                 Assert-MockCalled Get-AzureAdDirectoryObject -Times 0
-                Assert-MockCalled Invoke-AzRestMethod -Times 0
+                Assert-MockCalled Invoke-AzRestMethod -Times 0 `
+                    -ParameterFilter {
+                        $Method -eq "PATCH" -and `
+                        $Uri.EndsWith("/$groupObjectId")
+                    }
+            }
+            It "should log no warnings that the owners cannot be updated" {
+                Assert-MockCalled Write-Warning -Times 0
             }
         }
 
@@ -220,9 +233,12 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
             }
             It "should not update the group" {
                 Assert-MockCalled _buildCreateRequest -Times 0
-                Assert-MockCalled _getGroupOwners -Times 0
+                Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Method -eq "GET" -and $Uri -eq "https://graph.microsoft.com/beta/groups/$groupObjectId/owners" }
                 Assert-MockCalled Get-AzureAdDirectoryObject -Times 0
-                Assert-MockCalled Invoke-AzRestMethod -Times 0
+                Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Method -eq "PATCH" -and $Uri -eq "https://graph.microsoft.com/v1.0/groups/$groupObjectId" }
+            }
+            It "should log no warnings that the owners cannot be updated" {
+                Assert-MockCalled Write-Warning -Times 0
             }
         }
 
@@ -248,7 +264,7 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
             }
             It "should update the group" {
                 Assert-MockCalled _buildCreateRequest -Times 0
-                Assert-MockCalled _getGroupOwners -Times 0
+                Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Method -eq "GET" -and $Uri -eq "https://graph.microsoft.com/beta/groups/$groupObjectId/owners" }
                 Assert-MockCalled Get-AzureAdDirectoryObject -Times 0
                 Assert-MockCalled Invoke-AzRestMethod -Times 1 `
                     -ParameterFilter {
@@ -256,6 +272,35 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
                         $Uri -eq "https://graph.microsoft.com/v1.0/groups/$groupObjectId" -and `
                         $Payload -notmatch "owners" -and $Payload -match $updatedGroupDesc
                     }
+            }
+            It "should log no warnings that the owners cannot be updated" {
+                Assert-MockCalled Write-Warning -Times 0
+            }
+        }
+
+        Context "Up-to-date group with up-to-date owners specified" {
+            Mock Invoke-AzRestMethod { @{StatusCode = 200; Content = "{ `"value`": [ $($mockExistingOwners | ConvertTo-Json -Compress) ] }" } } -ParameterFilter { $Method -eq "GET" -and $Uri.EndsWith("/owners") }
+            Mock Get-AzureAdDirectoryObject { $mockExistingOwners }
+
+            $testGroup = $baseMockGroup.Clone() + @{
+                OwnersToAssignOnCreation = @('fake-existing-owner')
+                StrictMode = $false
+            }
+            $res = Assert-AzureAdSecurityGroup @testGroup
+
+            It "should return the existing group" {
+                $res.DisplayName | Should -Be $mockExistingGroup.DisplayName
+                $res.mailEnabled | Should -Be $mockExistingGroup.mailEnabled
+                Assert-MockCalled Get-AzADGroup -ParameterFilter { $ObjectId } -Times 0
+            }
+            It "should not update the group" {
+                Assert-MockCalled _buildCreateRequest -Times 0
+                Assert-MockCalled Invoke-AzRestMethod -Times 1 -ParameterFilter { $Method -eq "GET" -and $Uri -eq "https://graph.microsoft.com/beta/groups/$groupObjectId/owners" }
+                Assert-MockCalled Get-AzureAdDirectoryObject -Times 1
+                Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Method -eq "PATCH" -and $Uri -eq "https://graph.microsoft.com/v1.0/groups/$groupObjectId" }
+            }
+            It "should log no warnings that the owners cannot be updated" {
+                Assert-MockCalled Write-Warning -Times 0
             }
         }
 
@@ -273,9 +318,9 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
             }
             It "should not update the group" {
                 Assert-MockCalled _buildCreateRequest -Times 0
-                Assert-MockCalled _getGroupOwners -Times 1
+                Assert-MockCalled Invoke-AzRestMethod -Times 1 -ParameterFilter { $Method -eq "GET" -and $Uri -eq "https://graph.microsoft.com/beta/groups/$groupObjectId/owners" }
                 Assert-MockCalled Get-AzureAdDirectoryObject -Times 1
-                Assert-MockCalled Invoke-AzRestMethod -Times 0
+                Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Method -eq "PATCH" -and $Uri -eq "https://graph.microsoft.com/v1.0/groups/$groupObjectId" }
             }
             It "should log a warning that the owners cannot be updated" {
                 Assert-MockCalled Write-Warning -Times 1
@@ -303,9 +348,9 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
             }
             It "should not update the group" {
                 Assert-MockCalled _buildCreateRequest -Times 0
-                Assert-MockCalled _getGroupOwners -Times 1
+                Assert-MockCalled Invoke-AzRestMethod -Times 1 -ParameterFilter { $Method -eq "GET" -and $Uri -eq "https://graph.microsoft.com/beta/groups/$groupObjectId/owners" }
                 Assert-MockCalled Get-AzureAdDirectoryObject -Times 1
-                Assert-MockCalled Invoke-AzRestMethod -Times 0
+                Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Method -eq "PATCH" -and $Uri -eq "https://graph.microsoft.com/v1.0/groups/$groupObjectId" }
             }
             It "should log a warning that the owners cannot be updated" {
                 Assert-MockCalled Write-Warning -Times 1
@@ -333,7 +378,7 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
             }
             It "should update the group" {
                 Assert-MockCalled _buildCreateRequest -Times 0
-                Assert-MockCalled _getGroupOwners -Times 1
+                Assert-MockCalled Invoke-AzRestMethod -Times 1 -ParameterFilter { $Method -eq "GET" -and $Uri -eq "https://graph.microsoft.com/beta/groups/$groupObjectId/owners" }
                 Assert-MockCalled Get-AzureAdDirectoryObject -Times 1
                 Assert-MockCalled Invoke-AzRestMethod -Times 1 `
                     -ParameterFilter {
@@ -361,10 +406,13 @@ Describe "Assert-AzureAdSecurityGroup Tests" {
             }
             It "should not update the group and warn the owners cannot be updated" {
                 Assert-MockCalled _buildCreateRequest -Times 0
-                Assert-MockCalled _getGroupOwners -Times 1
+                Assert-MockCalled Invoke-AzRestMethod -Times 1 -ParameterFilter { $Method -eq "GET" -and $Uri -eq "https://graph.microsoft.com/beta/groups/$groupObjectId/owners" }
                 Assert-MockCalled Get-AzureAdDirectoryObject -Times 1
                 Assert-MockCalled Write-Warning -Times 1
-                Assert-MockCalled Invoke-AzRestMethod -Times 0
+                Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Method -eq "PATCH" -and $Uri -eq "https://graph.microsoft.com/v1.0/groups/$groupObjectId" }
+            }
+            It "should log a warning that the owners cannot be updated" {
+                Assert-MockCalled Write-Warning -Times 1
             }
         }
     }
