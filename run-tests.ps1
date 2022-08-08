@@ -6,8 +6,8 @@ try {
     if (!$existingModule -or ($existingModule.Version -notcontains $pesterVer)) {
         Install-Module Pester -RequiredVersion $pesterVer -Force -Scope CurrentUser -SkipPublisherCheck
     }
-    Import-Module Pester
-    $results = Invoke-Pester $here/module -PassThru -Show Describe,Failed,Summary
+    Import-Module Pester -RequiredVersion $pesterVer
+    $results = Invoke-Pester $here/module -ExcludeTag Integration -PassThru -Show Describe,Failed,Summary
 
     if ($results.FailedCount -gt 0) {
         throw ("{0} out of {1} tests failed - check previous logging for more details" -f $results.FailedCount, $results.TotalCount)
