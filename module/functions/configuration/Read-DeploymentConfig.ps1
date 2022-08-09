@@ -1,4 +1,4 @@
-# <copyright file="Read-DeploymentConfig.Tests.ps1" company="Endjin Limited">
+# <copyright file="Read-DeploymentConfig.ps1" company="Endjin Limited">
 # Copyright (c) Endjin Limited. All rights reserved.
 # </copyright>
 
@@ -27,6 +27,13 @@ The file extension used by files within the deployment configuration repository.
 .PARAMETER RequiredConfigurationKey
 The configuration setting that contains the list of any other required configuration settings.  This is used to
 pre-validate that the loaded deployment configuration has all the required values.
+
+.NOTES
+Configuration values can be literal values or can reference configuration handlers that are responsible for
+resolving the value.  For example, the following syntax can be used to have a configuration value populated
+from an Azure Key Vault Secret:
+
+$myPassword = "@Microsoft.KeyVault(SecretUri=https://myvault.vault.azure.net/secrets/my-password)"
 
 .OUTPUTS
 Hashtable
@@ -75,5 +82,7 @@ function Read-DeploymentConfig
         }
     }
 
-    $deploymentConfig
+    $resolvedDeploymentConfig = _ResolveDeploymentConfigValues $deploymentConfig
+
+    $resolvedDeploymentConfig
 }
