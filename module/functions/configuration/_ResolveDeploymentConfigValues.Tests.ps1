@@ -56,13 +56,13 @@ Describe "_ResolveDeploymentConfigValues Integration Tests" -Tag Integration {
     BeforeAll {
         $script:testRgName = (New-Guid).Guid
         $script:testKvName = "x{0}" -f $testRgName.Replace("-","").Substring(0,22)
-        $script:testSecretValue = (New-Guid).Guid
+        $script:testSecretValue = (New-Guid).Guid | ConvertTo-SecureString -AsPlainText
         $script:testSecretName = "test-secret"
 
         Write-Host "Provisioning test resources..."
         New-AzResourceGroup -Name $testRgName -Location UKSouth | Out-Null
         $kv = New-AzKeyVault -ResourceGroupName $testRgName -Name $testKvName -Location UKSouth
-        $script:kvSecret = Set-AzKeyVaultSecret -VaultName $kv.VaultName -Name $testSecretName -SecretValue (ConvertTo-SecureString $testSecretValue -AsPlainText)
+        $script:kvSecret = Set-AzKeyVaultSecret -VaultName $kv.VaultName -Name $testSecretName -SecretValue $testSecretValue
     }
     AfterAll {
         Write-Host "Removing test resources..."
@@ -81,7 +81,7 @@ Describe "_ResolveDeploymentConfigValues Integration Tests" -Tag Integration {
         $res = _ResolveDeploymentConfigValues $mockConfig
 
         It "should resolve the correct value from Key Vault" {
-            $mockConfig.password | should -be $testSecretValue
+            (ConvertFrom-SecureString -AsplainText $mockConfig.password)  | should -be (ConvertFrom-SecureString -AsplainText $testSecretValue)
         }
     }
 }
