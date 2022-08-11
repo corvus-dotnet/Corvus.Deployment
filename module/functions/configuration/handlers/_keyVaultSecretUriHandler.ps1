@@ -30,7 +30,8 @@ function _keyVaultSecretUriHandler {
     if ($res.StatusCode -eq 200) {
         $res.Content |
             ConvertFrom-Json | 
-            Select-Object -ExpandProperty value
+            Select-Object -ExpandProperty value |
+            ConvertTo-SecureString -AsPlainText
     }
     else {
         throw "Unable to resolve Key Vault secret: $($res.Content)"
