@@ -61,7 +61,7 @@ function Assert-AzureAdSecurityGroup
     $existingGroup = Get-AzADGroup -DisplayName $DisplayName
 
     # Resolve the ObjectId for any specified owners
-    $ownersToAssignObjectIds = $OwnersToAssignOnCreation |
+    [array]$ownersToAssignObjectIds = $OwnersToAssignOnCreation |
                                     Where-Object { $_ } |
                                     ForEach-Object { Get-AzureAdDirectoryObject -Criterion $_ }
 
@@ -69,11 +69,11 @@ function Assert-AzureAdSecurityGroup
         Write-Host "Security group with name $($existingGroup.displayName) already exists."
 
         if ($ownersToAssignObjectIds) {
-            $existingOwners = _getGroupOwners -GroupObjectId $existingGroup.id
+            [array]$existingOwners = _getGroupOwners -GroupObjectId $existingGroup.id
 
             $ownersToAssignObjectIds | ForEach-Object {
-                if ($_ -notin $existingOwners) {
-                    Write-Warning "Object ID '$_' was specified to be assigned as group owner, but group already exists and the ownership cannot be updated."
+                if ($_.id -notin $existingOwners) {
+                    Write-Warning "Object ID '$($_.id)' was specified to be assigned as group owner, but group already exists and the ownership cannot be updated."
                 }
             }
         }
@@ -165,19 +165,24 @@ function _getGroupOwners {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [string] $GroupObjectId
+        [guid] $GroupObjectId
     )
 
-    $resp = Invoke-AzRestMethod -Uri "https://graph.microsoft.com/v1.0/groups/$GroupObjectId/owners" |
-                Select-Object -ExpandProperty Content |
-                ConvertFrom-Json |
-                Select-Object -ExpandProperty value |
-                Select-Object -ExpandProperty id
+    # May-2022: Workaround a current limitation, whereby service principal group owners are not returned by the v1.0 MS Graph API
+    # ref: https://docs.microsoft.com/en-us/graph/api/group-list-owners?view=graph-rest-1.0&tabs=http
+
+    $resp = Invoke-AzRestMethod -Method GET -Uri "https://graph.microsoft.com/beta/groups/$($GroupObjectId.Guid)/owners" 
 
     if ($resp.StatusCode -ge 400) {
-        $errorMessage = "Failed to lookup existing group owners [ObjectId=$GroupObjectId]: $($resp.Content | ConvertFrom-Json | Select-Object -ExpandProperty error)"
+        $errorMessage = "Failed to lookup existing group owners [ObjectId=$($GroupObjectId.Guid)]: $($resp.Content | ConvertFrom-Json | Select-Object -ExpandProperty error)"
         throw $errorMessage
     }
 
-    return $resp
+    $ownerObjectIds = $resp |
+                        Select-Object -ExpandProperty Content |
+                        ConvertFrom-Json |
+                        Select-Object -ExpandProperty value |
+                        Select-Object -ExpandProperty id
+
+    return $ownerObjectIds
 }

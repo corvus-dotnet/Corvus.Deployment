@@ -18,11 +18,13 @@ Describe "Assert-AzureServicePrincipalForRbac Tests" {
         id = '00000000-0000-0000-0000-000000000001'
         appId = [guid]::Empty
         displayName = "mock-sp"
+        passwordCredentials = @()
     }
     $mockApp =  @{
         id = '00000000-0000-0000-0000-000000000002'
         appId = [guid]::Empty
         displayName = "mock-sp"
+        passwordCredentials = @()
     }
 
     # Global mocks

@@ -109,9 +109,9 @@ function Assert-AzureServicePrincipalForRbac
                             $existingSp.id,
                             $existingSp.appId)
 
+        $existingSecret = $null
         if ($useKeyVault) {
             # if using key vault, check whether the specified secret is available and contains the password
-            $existingSecret = $null
             $kvSecret = Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $KeyVaultSecretName
             if ($kvSecret) {
                 $existingSecret = $kvSecret.SecretValue |
@@ -157,7 +157,8 @@ function Assert-AzureServicePrincipalForRbac
             [bool] $UseKeyVault
         )
 
-        if ($PSCmdlet.ParameterSetName -eq "Application") {
+        $applicationMode = $PSCmdlet.ParameterSetName -eq "Application"
+        if ($applicationMode) {
             Write-Verbose "Credential will be associated with the App registration"
             $baseUri = "https://graph.microsoft.com/v1.0/applications/$($Application.id)"
             # Check whether we have an existing credential with the same display name
@@ -201,7 +202,7 @@ function Assert-AzureServicePrincipalForRbac
         # Store the credentials in key vault, if required
         if ($UseKeyVault) {
             $appLoginDetails = @{
-                appId = $Application.appId
+                appId = ($applicationMode ? $Application.appId : $ServicePrincipal.appId)
                 password = $newCred.secretText
                 tenant = (Get-AzContext).Tenant.Id
             }
