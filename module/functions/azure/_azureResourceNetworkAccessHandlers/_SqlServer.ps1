@@ -23,7 +23,7 @@ function _removeExistingTempRules_SqlServer {
 
         - $script:currentPublicIpAddress
         - $script:ruleName
-        - $script:ruleDescripion
+        - $script:ruleDescription
     #>
     [CmdletBinding()]
     param (
@@ -60,7 +60,7 @@ function _addTempRule_SqlServer {
 
         - $script:currentPublicIpAddress
         - $script:ruleName
-        - $script:ruleDescripion
+        - $script:ruleDescription
     #>
     [CmdletBinding()]
     param (

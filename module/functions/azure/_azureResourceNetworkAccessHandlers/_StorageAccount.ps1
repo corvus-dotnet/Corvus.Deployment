@@ -22,7 +22,7 @@ function _removeExistingTempRules_StorageAccount {
 
         - $script:currentPublicIpAddress
         - $script:ruleName
-        - $script:ruleDescripion
+        - $script:ruleDescription
     #>
     [CmdletBinding()]
     param (
@@ -67,7 +67,7 @@ function _addTempRule_StorageAccount {
 
         - $script:currentPublicIpAddress
         - $script:ruleName
-        - $script:ruleDescripion
+        - $script:ruleDescription
     #>
     [CmdletBinding()]
     param (

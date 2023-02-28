@@ -22,7 +22,7 @@ function _removeExistingTempRules_WebApp {
 
         - $script:currentPublicIpAddress
         - $script:ruleName
-        - $script:ruleDescripion
+        - $script:ruleDescription
     #>
     [CmdletBinding()]
     param (
@@ -66,7 +66,7 @@ function _addTempRule_WebApp {
 
         - $script:currentPublicIpAddress
         - $script:ruleName
-        - $script:ruleDescripion
+        - $script:ruleDescription
     #>
     [CmdletBinding()]
     param (
