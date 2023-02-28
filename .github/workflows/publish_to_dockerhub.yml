@@ -37,14 +37,14 @@ jobs:
         password: ${{ secrets.ENDJIN_DOCKERHUB_ACCESSTOKEN }}
 
     - name: Push to Docker Hub
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         push: ${{ startsWith(github.event.ref, 'refs/tags/') || github.event.inputs.push_to_dockerhub == 'true' }}
         tags: ${{ steps.get_config.outputs.docker_repository }}:${{ needs.run_gitversion.outputs.semver }}
 
     - name: Tag Docker Hub image with Major and MajorMinor tags
       if: needs.run_gitversion.outputs.prereleaseTag == ''
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         push: ${{ startsWith(github.event.ref, 'refs/tags/') || github.event.inputs.push_to_dockerhub == 'true' }}
         tags: ${{ steps.get_config.outputs.docker_repository }}:${{ needs.run_gitversion.outputs.major }},${{ steps.get_config.outputs.docker_repository }}:${{ needs.run_gitversion.outputs.majorMinor }}

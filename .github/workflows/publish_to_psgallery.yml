@@ -16,7 +16,7 @@ jobs:
 
     - name: Read workflow configuration
       id: get_config
-      uses: endjin/pr-autoflow/actions/read-configuration@v1
+      uses: endjin/pr-autoflow/actions/read-configuration@v4
       with:
         config_file: .github/config/ps-module.json
   
