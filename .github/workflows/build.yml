@@ -18,7 +18,7 @@ jobs:
         nunit_files: "PesterTestResults.xml"
 
   run_gitversion:
-    uses: ./gitversion.yml
+    uses: ./.github/workflows/gitversion.yml
 
   gitversion_debug:
     runs-on: ubuntu-latest

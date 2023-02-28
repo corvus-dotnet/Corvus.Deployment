@@ -5,7 +5,7 @@ on:
 
 jobs:
   run_gitversion:
-    uses: ./gitversion.yml
+    uses: ./.github/workflows/gitversion.yml
 
   publish_to_psgallery:
     runs-on: ubuntu-latest

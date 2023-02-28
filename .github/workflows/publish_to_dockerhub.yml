@@ -9,7 +9,7 @@ on:
 
 jobs:
   run_gitversion:
-    uses: ./gitversion.yml
+    uses: ./.github/workflows/gitversion.yml
 
   publish_to_dockerhub:
     runs-on: ubuntu-latest
