@@ -6,6 +6,8 @@ on:
 jobs:
   run_gitversion:
     uses: ./.github/workflows/gitversion.yml
+    if: |
+      startsWith(github.event.ref, 'refs/tags/')
 
   publish_to_psgallery:
     runs-on: ubuntu-latest
