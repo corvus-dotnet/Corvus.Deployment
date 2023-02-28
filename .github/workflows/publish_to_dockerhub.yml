@@ -9,29 +9,7 @@ on:
 
 jobs:
   run_gitversion:
-    runs-on: ubuntu-latest
-    name: Run GitVersion
-    outputs:
-      semver: ${{ steps.run_gitversion.outputs.semver }}
-      major: ${{ steps.run_gitversion.outputs.major }}
-      majorMinor: ${{ steps.run_gitversion.outputs.major }}.${{ steps.run_gitversion.outputs.minor }}
-      preReleaseTag: ${{ steps.run_gitversion.outputs.preReleaseTag }}
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: '6.0.x'
-    - name: Install GitVersion
-      run: |
-        dotnet tool install -g GitVersion.Tool --version 5.8.0
-        echo "/github/home/.dotnet/tools" >> $GITHUB_PATH
-    - name: Run GitVersion
-      id: run_gitversion
-      run: |
-        pwsh -noprofile -c 'dotnet-gitversion /diag'
-        pwsh -noprofile -c '(dotnet-gitversion | ConvertFrom-Json).psobject.properties | % { echo "$($_.name)=$($_.value)" >> $env:GITHUB_ENV }'
+    uses: ./gitversion.yml
 
   publish_to_dockerhub:
     runs-on: ubuntu-latest
