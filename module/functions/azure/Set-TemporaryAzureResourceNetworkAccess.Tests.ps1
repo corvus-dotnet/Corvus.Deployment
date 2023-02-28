@@ -51,6 +51,10 @@ Describe "Set-TemporaryAzureResourceNetworkAccess Integration Tests" {
             
             # Lockdown access to the storage account
             $sa | Update-AzStorageAccountNetworkRuleSet -DefaultAction Deny -Bypass None
+
+            # Pause to ensure the change has taken effect
+            Write-Host "Waiting for storage firewall to update..."
+            Start-Sleep -Seconds 30
         }
 
         It "should not have permissions before enabling temporary network access" {
@@ -62,6 +66,7 @@ Describe "Set-TemporaryAzureResourceNetworkAccess Integration Tests" {
             Set-TemporaryAzureResourceNetworkAccess -ResourceType StorageAccount -ResourceGroupName $rg -ResourceName $suffix
             
             # Pause to ensure the change has taken effect
+            Write-Host "Waiting for storage firewall to update..."
             Start-Sleep -Seconds 30
 
             { Get-AzStorageBlob -Container "foo" -Blob "foo/bar.txt" -Context $sa.Context -ErrorAction Stop } |
@@ -72,6 +77,7 @@ Describe "Set-TemporaryAzureResourceNetworkAccess Integration Tests" {
             Set-TemporaryAzureResourceNetworkAccess -ResourceType StorageAccount -ResourceGroupName $rg -ResourceName $suffix -Revoke
 
             # Pause to ensure the change has taken effect
+            Write-Host "Waiting for storage firewall to update..."
             Start-Sleep -Seconds 30
 
             { Get-AzStorageBlob -Container "foo" -Blob "foo/bar.txt" -Context $sa.Context -ErrorAction Stop } |
@@ -158,7 +164,7 @@ Describe "Set-TemporaryAzureResourceNetworkAccess Integration Tests" {
             $webParams = @{
                 ResourceGroupName = $rg                
                 Name = $suffix
-                AppServicePlan = $aspParams.Name
+                AppServicePlan = $aspParams.ResourceName
                 ContainerImageName = "nginx:latest"
                 EnableContainerContinuousDeployment = $false
                 Location = $location
