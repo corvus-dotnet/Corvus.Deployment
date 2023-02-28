@@ -50,7 +50,7 @@ jobs:
       id: run_gitversion
       run: |
         pwsh -noprofile -c 'dotnet-gitversion /diag'
-        pwsh -noprofile -c '(dotnet-gitversion | ConvertFrom-Json).psobject.properties | % { echo "$($_.name)=$($_.value)" >> $env:GITHUB_ENV }'
+        pwsh -noprofile -c '(dotnet-gitversion | ConvertFrom-Json).psobject.properties | % { echo "$($_.name)=$($_.value)" >> $env:GITHUB_OUTPUT }'
 
     - run: |
         echo "SemVer: ${{ steps.run_gitversion.outputs.SemVer }}"
