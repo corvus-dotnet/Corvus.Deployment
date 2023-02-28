@@ -10,7 +10,7 @@ Get-ChildItem "$here\_azureResourceNetworkAccessHandlers\*.ps1" |
 # Suppress the connection validation logic
 function _EnsureAzureConnection {}
 
-Describe "Set-TemporaryAzureResourceNetworkAccess Integration Tests" {
+Describe "Set-TemporaryAzureResourceNetworkAccess Integration Tests" -Tag Integration {
 
     BeforeAll {
         $currentUser = Get-AzADUser -SignedIn
