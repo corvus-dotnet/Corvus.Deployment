@@ -7,7 +7,10 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".Tests.ps1", ".p
 Get-ChildItem "$here\_azureResourceNetworkAccessHandlers\*.ps1" |
     ForEach-Object { . $_.FullName }
 
-Describe "Set-TemporaryAzureResourceNetworkAccess Tests" {
+# Suppress the connection validation logic
+function _EnsureAzureConnection {}
+
+Describe "Set-TemporaryAzureResourceNetworkAccess Integration Tests" {
 
     BeforeAll {
         $currentUser = Get-AzADUser -SignedIn

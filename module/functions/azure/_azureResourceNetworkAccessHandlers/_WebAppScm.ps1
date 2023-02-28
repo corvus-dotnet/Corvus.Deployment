@@ -34,6 +34,8 @@ function _removeExistingTempRules_WebAppScm {
         [string] $ResourceName
     )
 
+    _EnsureAzureConnection -AzPowerShell
+
     Get-AzWebApp -ResourceGroupName $ResourceGroupName `
                  -Name $ResourceName |
         Select-Object -ExpandProperty SiteConfig |
@@ -78,6 +80,8 @@ function _addTempRule_WebAppScm {
         [Parameter(Mandatory=$true)]
         [string] $ResourceName
     )
+
+    _EnsureAzureConnection -AzPowerShell
 
     Add-AzWebAppAccessRestrictionRule `
         -ResourceGroupName $ResourceGroupName `

@@ -34,6 +34,8 @@ function _removeExistingTempRules_SqlServer {
         [string] $ResourceName
     )
 
+    _EnsureAzureConnection -AzPowerShell
+
     Get-AzSqlServerFirewallRule -ResourceGroupName $ResourceGroupName `
                                 -ServerName $ResourceName |
         Where-Object { $_.FirewallRuleName -eq $script:ruleName } |
@@ -70,6 +72,8 @@ function _addTempRule_SqlServer {
         [Parameter(Mandatory=$true)]
         [string] $ResourceName
     )
+
+    _EnsureAzureConnection -AzPowerShell
 
     New-AzSqlServerFirewallRule `
         -ResourceGroupName $ResourceGroupName `

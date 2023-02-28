@@ -33,6 +33,8 @@ function _removeExistingTempRules_StorageAccount {
         [string] $ResourceName
     )
 
+    _EnsureAzureConnection -AzPowerShell
+
     $currentRules = Get-AzStorageAccountNetworkRuleSet `
                         -ResourceGroupName $ResourceGroupName `
                         -Name $ResourceName
@@ -77,6 +79,8 @@ function _addTempRule_StorageAccount {
         [Parameter(Mandatory=$true)]
         [string] $ResourceName
     )
+
+    _EnsureAzureConnection -AzPowerShell
 
     $currentRules = Get-AzStorageAccountNetworkRuleSet `
                         -ResourceGroupName $ResourceGroupName `
