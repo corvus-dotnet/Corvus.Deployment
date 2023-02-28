@@ -26,12 +26,12 @@ jobs:
 
     - name: Read workflow configuration
       id: get_config
-      uses: endjin/pr-autoflow/actions/read-configuration@v1
+      uses: endjin/pr-autoflow/actions/read-configuration@v4
       with:
         config_file: .github/config/docker.json
 
     - name: Login to DockerHub
-      uses: docker/login-action@v1 
+      uses: docker/login-action@v2
       with:
         username: ${{ secrets.ENDJIN_DOCKERHUB_USERNAME }}
         password: ${{ secrets.ENDJIN_DOCKERHUB_ACCESSTOKEN }}
