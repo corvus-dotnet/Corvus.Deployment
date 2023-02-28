@@ -14,21 +14,21 @@ jobs:
       majorMinorPatch: ${{ steps.run_gitversion.outputs.MajorMinorPatch }}
       nuGetPreReleaseTag: ${{ steps.run_gitversion.outputs.NuGetPreReleaseTag }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 0
-    - uses: actions/setup-dotnet@v1
+    - uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: '3.1.402'
+        dotnet-version: '6.0.x'
     - name: Install GitVersion
       run: |
-        dotnet tool install -g GitVersion.Tool --version 5.6.6
+        dotnet tool install -g GitVersion.Tool --version 5.8.0
         echo "/github/home/.dotnet/tools" >> $GITHUB_PATH
     - name: Run GitVersion
       id: run_gitversion
       run: |
         pwsh -noprofile -c 'dotnet-gitversion /diag'
-        pwsh -noprofile -c '(dotnet-gitversion | ConvertFrom-Json).psobject.properties | % { echo ("::set-output name={0}::{1}" -f $_.name, $_.value) }'
+        pwsh -noprofile -c '(dotnet-gitversion | ConvertFrom-Json).psobject.properties | % { echo "$($_.name)=$($_.value)" >> $env:GITHUB_ENV }'
     - run: |
         echo "SemVer: ${{ steps.run_gitversion.outputs.gitversion_SemVer }}"
 
@@ -37,7 +37,7 @@ jobs:
     name: Publish to PowerShell Gallery
     needs: run_gitversion
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Read workflow configuration
       id: get_config

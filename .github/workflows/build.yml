@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Run Pester tests
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - run: pwsh -f ./run-tests.ps1
     # Publish test results
     - name: Publish Test Results
@@ -26,24 +26,24 @@ jobs:
       majorMinor: ${{ steps.run_gitversion.outputs.major }}.${{ steps.run_gitversion.outputs.minor }}
       preReleaseTag: ${{ steps.run_gitversion.outputs.preReleaseTag }}
     steps:
-    - uses: actions/setup-dotnet@v1
+    - uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: '3.1.x'
+        dotnet-version: '6.0.x'
     
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 0
     
     - name: Install GitVersion
       run: |
-        dotnet tool install -g GitVersion.Tool --version 5.6.6
+        dotnet tool install -g GitVersion.Tool --version 5.8.0
         echo "/github/home/.dotnet/tools" >> $GITHUB_PATH
 
     - name: Run GitVersion
       id: run_gitversion
       run: |
         pwsh -noprofile -c 'dotnet-gitversion /diag'
-        pwsh -noprofile -c '(dotnet-gitversion | ConvertFrom-Json).psobject.properties | % { echo ("::set-output name={0}::{1}" -f $_.name, $_.value) }'
+        pwsh -noprofile -c '(dotnet-gitversion | ConvertFrom-Json).psobject.properties | % { echo "$($_.name)=$($_.value)" >> $env:GITHUB_ENV }'
 
     - run: |
         echo "SemVer: ${{ steps.run_gitversion.outputs.SemVer }}"
