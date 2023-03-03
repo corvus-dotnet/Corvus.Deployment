@@ -82,3 +82,19 @@ function _addTempRule_SqlServer {
         -EndIpAddress $script:currentPublicIpAddress `
         -FirewallRuleName $script:ruleName
 }
+
+function _waitForRule_SqlServer {
+    <#
+    .SYNOPSIS
+    Implements the typical delay required before network access rules take effect for this resource type.
+
+    .DESCRIPTION
+    Implements the typical delay required before network access rules take effect for this resource type.
+    #>
+
+    [CmdletBinding()]
+    param ()
+    
+    Write-Host "Waiting 5 seconds to allow rule changes to take effect..."
+    Start-Sleep -Seconds 5
+}

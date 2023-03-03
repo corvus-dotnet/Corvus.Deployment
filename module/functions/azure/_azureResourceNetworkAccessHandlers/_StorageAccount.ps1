@@ -94,3 +94,19 @@ function _addTempRule_StorageAccount {
             Action = "allow"
         })
 }
+
+function _waitForRule_StorageAccount {
+    <#
+    .SYNOPSIS
+    Implements the typical delay required before network access rules take effect for this resource type.
+
+    .DESCRIPTION
+    Implements the typical delay required before network access rules take effect for this resource type.
+    #>
+
+    [CmdletBinding()]
+    param ()
+    
+    Write-Host "Waiting 30 seconds to allow rule changes to take effect..."
+    Start-Sleep -Seconds 30
+}

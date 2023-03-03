@@ -22,6 +22,9 @@ The name of the resource to be managed.
 When true, any existing temporary network access rules for the specified resource will be removed. No
 rules will be added.
 
+.PARAMETER Wait
+When true, processing will wait for a time period implemented by the handler to allow the changes to take effect.
+
 #>
 function Set-TemporaryAzureResourceNetworkAccess {
     [CmdletBinding()]
@@ -36,7 +39,9 @@ function Set-TemporaryAzureResourceNetworkAccess {
         [Parameter(Mandatory=$true)]
         [string] $ResourceName,
 
-        [switch] $Revoke
+        [switch] $Revoke,
+
+        [switch] $Wait
     )
 
     # Set optional values used by some handler implmentations
@@ -48,6 +53,7 @@ function Set-TemporaryAzureResourceNetworkAccess {
     # Configure handler settings for the given resource type
     $removeHandlerName = "_removeExistingTempRules_$ResourceType"
     $addHandlerName = "_addTempRule_$ResourceType"
+    $waitHandlerName = "_waitForRule_$ResourceType"
     $handlerSplat = @{
         ResourceGroupName = $ResourceGroupName
         ResourceName = $ResourceName
@@ -61,5 +67,9 @@ function Set-TemporaryAzureResourceNetworkAccess {
     if (!$Revoke) {
         Write-Host "Granting temporary network access to '$currentPublicIpAddress' $logSuffix"
         & $addHandlerName @handlerSplat
+    }
+
+    if ($Wait) {
+        & $waitHandlerName
     }
 }
