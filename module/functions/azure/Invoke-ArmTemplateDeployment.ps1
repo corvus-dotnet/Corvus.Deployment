@@ -53,6 +53,10 @@ The name of the parameter used by the main ARM template to refer to the location
 The name of the parameter used by the main ARM template to refer to the SAS token that has access to the Azure storage account used for staging
 ARM artifacts.
 
+.PARAMETER SkipTestDeployment
+When true, the ARM/Bicep template will not be validated prior to attempting the real deployment. THis validation is also skipped when calling 
+this function with '-WhatIf'.
+
 .OUTPUTS
 Microsoft.Azure.Commands.ResourceManager.Cmdlets.SdkModels.PSResourceGroupDeployment
 #>
@@ -81,7 +85,8 @@ function Invoke-ArmTemplateDeployment
         [string] $ArtifactsLocationName = '_artifactsLocation',
         [string] $ArtifactsLocationSasTokenName = '_artifactsLocationSasToken',
         [string] $BicepVersion = "0.4.1124",
-        [int] $MaxRetries = 3
+        [int] $MaxRetries = 3,
+        [switch] $SkipTestDeployment
     )
 
     $OptionalParameters = @{}
@@ -118,16 +123,21 @@ function Invoke-ArmTemplateDeployment
         $argsForDeployType += @{ Location = $Location }
     }
 
-    Write-Host "Validating ARM template ($ArmTemplatePath)..."
-    # Dynamically call the relevant cmdlet for the current deployment type
-    $validationErrors = & "Test-Az$($DeploymentScope)Deployment" `
-                                    @argsForDeployType `
-                                    @OptionalParameters `
-                                    @TemplateParameters `
-                                    -Verbose
-    if ($validationErrors) {
-        Write-Warning ($validationErrors | Out-String)
-        throw "ARM Template validation errors - check previous warnings"
+    if (!$SkipTestDeployment -and !$WhatIfPreference) {
+        Write-Host "Validating ARM template ($ArmTemplatePath)..."
+        # Dynamically call the relevant cmdlet for the current deployment type
+        $validationErrors = & "Test-Az$($DeploymentScope)Deployment" `
+                                        @argsForDeployType `
+                                        @OptionalParameters `
+                                        @TemplateParameters `
+                                        -Verbose
+        if ($validationErrors) {
+            Write-Warning ($validationErrors | Out-String)
+            throw "ARM Template validation errors - check previous warnings"
+        }
+    }
+    else {
+        Write-Host "Skipping ARM template validation [SkipTestDeployment=true]"
     }
 
     # Deploy the ARM template with a built-in retry loop to try and limit the disruption from spurious ARM errors
