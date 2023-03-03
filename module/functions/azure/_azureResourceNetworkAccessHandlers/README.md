@@ -15,6 +15,8 @@ When writing a new handler, you must consider the following requirements:
         * This must be able to update the specified resource to grant network access to a specified IP address (see below)
     * `_removeExistingTempRules_<handler-name>`
         * This must be able to find and remove/revert any changes made by the above function
+    * `_waitForRule_<handler-name>`
+        * This implements waiting for an update to take effect, typically a simple delay, based on the target resource type
 * The above functions must accept the following string parameters:
     * `ResourceGroupName`
     * `ResourceName`
