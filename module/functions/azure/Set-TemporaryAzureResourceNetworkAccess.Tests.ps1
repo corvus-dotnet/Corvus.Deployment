@@ -62,23 +62,22 @@ Describe "Set-TemporaryAzureResourceNetworkAccess Integration Tests" -Tag Integr
                 Should -Throw "This request is not authorized to perform this operation."
         }
         
-        It "should connect successfully after enabling temporary network access" {
+        It "should not be able to connect immediately when not waiting for the temporary network access" {
             Set-TemporaryAzureResourceNetworkAccess -ResourceType StorageAccount -ResourceGroupName $rg -ResourceName $suffix
-            
-            # Pause to ensure the change has taken effect
-            Write-Host "Waiting for storage firewall to update..."
-            Start-Sleep -Seconds 30
 
+            { Get-AzStorageBlob -Container "foo" -Blob "foo/bar.txt" -Context $sa.Context -ErrorAction Stop } |
+                Should -Throw "This request is not authorized to perform this operation."
+        }
+
+        It "should connect successfully after waiting for the temporary network access" {
+            Start-Sleep -Seconds 30
+            
             { Get-AzStorageBlob -Container "foo" -Blob "foo/bar.txt" -Context $sa.Context -ErrorAction Stop } |
                 Should -Throw "Can not find blob 'foo/bar.txt' in container 'foo', or the blob type is unsupported."
         }
         
         It "should not have permissions after using the 'Revoke' flag" {
-            Set-TemporaryAzureResourceNetworkAccess -ResourceType StorageAccount -ResourceGroupName $rg -ResourceName $suffix -Revoke
-
-            # Pause to ensure the change has taken effect
-            Write-Host "Waiting for storage firewall to update..."
-            Start-Sleep -Seconds 30
+            Set-TemporaryAzureResourceNetworkAccess -ResourceType StorageAccount -ResourceGroupName $rg -ResourceName $suffix -Revoke -Wait
 
             { Get-AzStorageBlob -Container "foo" -Blob "foo/bar.txt" -Context $sa.Context -ErrorAction Stop } |
                 Should -Throw "This request is not authorized to perform this operation."
@@ -119,20 +118,14 @@ Describe "Set-TemporaryAzureResourceNetworkAccess Integration Tests" -Tag Integr
         }
        
         It "should connect successfully after enabling temporary network access" {
-            Set-TemporaryAzureResourceNetworkAccess -ResourceType SqlServer -ResourceGroupName $rg -ResourceName $suffix
-           
-            # Pause to ensure the change has taken effect
-            Start-Sleep -Seconds 5
+            Set-TemporaryAzureResourceNetworkAccess -ResourceType SqlServer -ResourceGroupName $rg -ResourceName $suffix -Wait
     
             $res = $sqlCmd.Invoke()
             $res | Should -Not -BeNullOrEmpty
         }
        
         It "should not have permissions after using the 'Revoke' flag" {
-            Set-TemporaryAzureResourceNetworkAccess -ResourceType SqlServer -ResourceGroupName $rg -ResourceName $suffix -Revoke
-    
-            # Pause to ensure the change has taken effect
-            Start-Sleep -Seconds 5
+            Set-TemporaryAzureResourceNetworkAccess -ResourceType SqlServer -ResourceGroupName $rg -ResourceName $suffix -Revoke -Wait
     
             { $sqlCmd.Invoke() } | Should -Throw
         }
@@ -188,7 +181,7 @@ Describe "Set-TemporaryAzureResourceNetworkAccess Integration Tests" -Tag Integr
         }
         
         It "should connect successfully after enabling temporary network access" {
-            Set-TemporaryAzureResourceNetworkAccess -ResourceType WebApp -ResourceGroupName $rg -ResourceName $suffix
+            Set-TemporaryAzureResourceNetworkAccess -ResourceType WebApp -ResourceGroupName $rg -ResourceName $suffix -Wait
             
             # Pause to ensure the change has taken effect
             Start-Sleep -Seconds 5
@@ -198,10 +191,7 @@ Describe "Set-TemporaryAzureResourceNetworkAccess Integration Tests" -Tag Integr
         }
         
         It "should not have permissions after using the 'Revoke' flag" {
-            Set-TemporaryAzureResourceNetworkAccess -ResourceType WebApp -ResourceGroupName $rg -ResourceName $suffix -Revoke
-
-            # Pause to ensure the change has taken effect
-            Start-Sleep -Seconds 5
+            Set-TemporaryAzureResourceNetworkAccess -ResourceType WebApp -ResourceGroupName $rg -ResourceName $suffix -Revoke -Wait
 
             $resp = Invoke-WebRequest -uri https://$($web.DefaultHostName) -SkipHttpErrorCheck
             $resp.StatusCode | Should -Be 403
