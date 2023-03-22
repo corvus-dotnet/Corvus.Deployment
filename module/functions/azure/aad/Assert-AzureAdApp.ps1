@@ -10,16 +10,16 @@ Ensures that an AzureAD application with the specified configuration exists.
 Ensures that an AzureAD application with the specified configuration exists, creating or updating as necessary.
 
 .PARAMETER DisplayName
-Used to search for an existing AzureAD application or create one with the specified name.
+Used to search for an existing AzureAD application or create one with the specified name. Can only be updated for an existing AzureAD application when also updating the 'ReplyUrls' property.
 
-.PARAMETER AppUri
-The URL to the application homepage.
+.PARAMETER IdentifierUri
+The URL to the application homepage. Can only be updated for an existing AzureAD application when also updating the 'ReplyUrls' property.
 
 .PARAMETER ReplyUrls
-The application reply urls.
+The application reply urls. Can be updated for an existing AzureAD application.
 
 .OUTPUTS
-Microsoft.Azure.Commands.ActiveDirectory.PSADApplication
+Microsoft.Azure.PowerShell.Cmdlets.Resources.MSGraph.Models.ApiV10.MicrosoftGraphApplication
 #>
 function Assert-AzureAdApp
 {
@@ -29,10 +29,12 @@ function Assert-AzureAdApp
         [Parameter(Mandatory=$true)]
         [string] $DisplayName,
 
-        [Parameter(Mandatory=$true)]
-        [string] $AppUri,
+        [Parameter()]
+        [Alias("AppUri")]
+        [string] $IdentifierUri,
         
-        [string[]]$ReplyUrls
+        [Parameter()]
+        [string[]] $ReplyUrls
     )
 
     # Check whether we have a valid AzPowerShell connection, but no subscription-level access is required
@@ -44,10 +46,10 @@ function Assert-AzureAdApp
                 Where-Object {$_.DisplayName -eq $DisplayName}
     
     if ($app) {
-        Write-Host "Found existing app with id $($app.ApplicationId)"
+        Write-Host "Found existing app [AppId=$($app.AppId)] [ObjectId=$($app.Id)]"
         $ReplyUrlsOk = $true
         ForEach ($ReplyUrl in $ReplyUrls) {
-            if (-not $app.ReplyUrls.Contains($ReplyUrl)) {
+            if (!$app.Web.RedirectUri -or !$app.Web.RedirectUri.Contains($ReplyUrl)) {
                 $ReplyUrlsOk = $false
                 Write-Host "Reply URL $ReplyUrl not present in app"
             }
@@ -55,15 +57,21 @@ function Assert-AzureAdApp
 
         if (-not $ReplyUrlsOk) {
             Write-Host "Setting reply URLs: $replyUrls"
-            $app = Update-AzADApplication -ObjectId $app.ObjectId `
-                                          -ReplyUrl $ReplyUrls
+            Update-AzADApplication -ObjectId $app.Id @PSBoundParameters | Out-Null
+            $app = Get-AzADApplication -ObjectId $app.Id
         }
     } else {
-        $app = New-AzADApplication -DisplayName $DisplayName `
-                                   -IdentifierUris $AppUri `
-                                   -HomePage $AppUri `
-                                   -ReplyUrls $ReplyUrls
-        Write-Host "Created new app with id $($app.ApplicationId)"
+        Write-Host "Creating new app"
+        $PSBoundParameters.Remove("ReplyUrls") | Out-Null
+        $additionalCreateParams = @{}
+        if ($ReplyUrls.Count -gt 0) {
+            $additionalCreateParams += @{ web = @{ redirectUris = $ReplyUrls } }
+        }
+        Write-Verbose "PSBoundParameters:`n$($PSBoundParameters | ConvertTo-Json -Depth 100)"
+        Write-Verbose "additionalCreateParams:`n$($createParams | ConvertTo-Json -Depth 100)"
+
+        $app = New-AzADApplication @PSBoundParameters @additionalCreateParams
+        Write-Host "Created new app with AppId $($app.AppId) [IdentifierUri=$($app.IdentifierUri)]"
     }
 
     return $app
