@@ -50,28 +50,34 @@ function Assert-AzureAdApp
     )
 
     # Helper functions
-    function _buildAppWebConfig {
-        $webConfigSplat = @{
+    function _buildAppWebConfig($BoundParameters)
+    {
+        # Construct an object that represents the 'webApplication' type
+        # ref: https://learn.microsoft.com/en-us/graph/api/resources/webapplication?view=graph-rest-1.0
+        $appWebConfig = @{
             implicitGrantSettings = @{
                 enableAccessTokenIssuance = $EnableAccessTokenIssuance.ToBool()
                 enableIdTokenIssuance = $EnableIdTokenIssuance.ToBool()
             }
         }
-        if ($PSBoundParameters.ContainsKey("ReplyUrls")) {
-            $webConfigSplat += @{ redirectUris = $ReplyUrls }
+        if ($BoundParameters.ContainsKey("ReplyUrls")) {
+            # Use the ReplyUrls that have been specified on the call to Assert-AzureAdApp
+            $appWebConfig += @{ redirectUris = $ReplyUrls }
         }
         elseif ($app) {
-            $webConfigSplat += @{ redirectUris = $app.Web.redirectUri }
+            # ReplyUrls not specified, use the app's existing values
+            $appWebConfig += @{ redirectUris = $app.Web.redirectUri }
         }
         else {
-            $webConfigSplat += @{ redirectUris = @() }
+            # ReplyUrls not specified and app does not yet exist
+            $appWebConfig += @{ redirectUris = @() }
         }
-        return $webConfigSplat
+        return $appWebConfig
     }
 
-   #
-   # Main implementation
-   #
+    #
+    # Main implementation
+    #
 
     # Check whether we have a valid AzPowerShell connection, but no subscription-level access is required
     _EnsureAzureConnection -AzPowerShell -TenantOnly -ErrorAction Stop | Out-Null
@@ -100,7 +106,7 @@ function Assert-AzureAdApp
         ) {
             $additionalUpdateParams = @{
                 objectId = $app.Id
-                web = _buildAppWebConfig
+                web = _buildAppWebConfig($PSBoundParameters)
             }
             $appNeedsUpdating = $true
         }
@@ -127,7 +133,7 @@ function Assert-AzureAdApp
         $additionalCreateParams = @{}
         if ($ReplyUrls.Count -gt 0) {
             $additionalCreateParams += @{
-                web = _buildAppWebConfig
+                web = _buildAppWebConfig($PSBoundParameters)
             }
         }
         # Remove parameters that cannot be 'splatted' into New-AzADApplication
