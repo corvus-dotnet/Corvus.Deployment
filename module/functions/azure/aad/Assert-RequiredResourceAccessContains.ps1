@@ -37,6 +37,9 @@ function Assert-RequiredResourceAccessContains
         [hashtable[]] $AccessRequirements
     )
 
+    # Check whether we have a valid AzPowerShell connection, but no subscription-level access is required
+    _EnsureAzureConnection -AzPowerShell -TenantOnly -ErrorAction Stop | Out-Null
+
     $madeChange = $false
     [array]$requiredResourceAccess = $App.requiredResourceAccess
     $resourceEntry = $requiredResourceAccess | Where-Object { $_.resourceAppId -eq $ResourceAppId }

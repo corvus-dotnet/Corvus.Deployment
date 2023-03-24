@@ -20,11 +20,11 @@ function Get-MicrosoftGraphApiAppUri
     [CmdletBinding()]
     param
     (
-        [Parameter(Mandatory=$true)]
-        [Microsoft.Azure.Commands.ActiveDirectory.PSADApplication] $App
+        [Parameter(Mandatory=$true, ValueFromPipeline=$true)]
+        [Microsoft.Azure.PowerShell.Cmdlets.Resources.MSGraph.Models.ApiV10.MicrosoftGraphApplication] $App
     )
 
-    $graphApiAppUri = ("https://graph.microsoft.com/v1.0/{0}/applications/{1}" -f $script:moduleContext.AadTenantId, $App.ObjectId)
+    $graphApiAppUri = ("https://graph.microsoft.com/v1.0/{0}/applications/{1}" -f $script:moduleContext.AadTenantId, $App.Id)
 
     return $graphApiAppUri
 }
