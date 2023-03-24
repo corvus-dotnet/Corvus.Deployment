@@ -12,69 +12,73 @@ Ensures that an existing AzureAD application has the required ResourceAccess spe
 .PARAMETER App
 The AzureAD application object.
 
-.PARAMETER ResourceId
-The ID of the resource to which the access is required.
+.PARAMETER ResourceAppId
+The Application ID of the resource to which the access is required.
 
 .PARAMETER AccessRequirements
 The access required to the specified resource.
 
 .OUTPUTS
-The AzureAD application's manifest returned by the Azure Graph REST API.
+The Azure AD application object.
 #>
 function Assert-RequiredResourceAccessContains
 {
     [CmdletBinding()]
     param
     (
-        [Parameter(Mandatory=$true)]
-        [Microsoft.Azure.Commands.ActiveDirectory.PSADApplication] $App,
+        [Parameter(Mandatory=$true, ValueFromPipeline=$true)]
+        [Microsoft.Azure.PowerShell.Cmdlets.Resources.MSGraph.Models.ApiV10.MicrosoftGraphApplication] $App,
 
         [Parameter(Mandatory=$true)]
-        [string] $ResourceId,
+        [Alias("ResourceId")]
+        [string] $ResourceAppId,
 
         [Parameter(Mandatory=$true)]
-        [hashtable[]] $AccessRequirements,
-
-        [Parameter()]
-        [switch] $UseAzureAdGraph
+        [hashtable[]] $AccessRequirements
     )
 
     $madeChange = $false
-    [array]$requiredResourceAccess = (Get-AzureADApplicationManifest $App).requiredResourceAccess
-    $resourceEntry = $requiredResourceAccess | Where-Object {$_.resourceAppId -eq $ResourceId }
+    [array]$requiredResourceAccess = $App.requiredResourceAccess
+    $resourceEntry = $requiredResourceAccess | Where-Object { $_.resourceAppId -eq $ResourceAppId }
     if (-not $resourceEntry) {
         $madeChange = $true
-        $resourceEntry = @{resourceAppId=$ResourceId;resourceAccess=@()}
+        $resourceEntry = @{
+            resourceAppId = $ResourceAppId
+            resourceAccess = @()
+        }
         $requiredResourceAccess += $resourceEntry
     }
     
     foreach ($access in $AccessRequirements) {
-        $RequiredAccess = $resourceEntry.resourceAccess| Where-Object {$_.id -eq $access.Id -and $_.type -eq $access.Type}
-        if (-not $RequiredAccess) {
-            Write-Host "Adding '$ResourceId : $($access.id)' required resource access"
+        $requiredAccess = $resourceEntry.resourceAccess |
+                            Where-Object { $_.id -eq $access.Id -and $_.type -eq $access.Type }
+        if (-not $requiredAccess) {
+            Write-Host "Adding '$ResourceAppId : $($access.id)' required resource access"
     
-            $RequiredAccess = @{id=$access.Id; type=$access.Type}
-            $resourceEntry.resourceAccess += $RequiredAccess
+            $requiredAccess = @{
+                id = $access.Id
+                type=$access.Type
+            }
+            $resourceEntry.resourceAccess += $requiredAccess
             $madeChange = $true
         }
     }
 
     if ($madeChange) {
-        if ($UseAzureAdGraph) {
-            $graphApiAppUri = (Get-AzureAdGraphApiAppUri $App)
+        $uri = $App | Get-MicrosoftGraphApiAppUri
+        $body = @{
+            requiredResourceAccess = $requiredResourceAccess
         }
-        else {
-            $graphApiAppUri = (Get-MicrosoftGraphApiAppUri $App)
+        $resp = Invoke-AzRestMethod `
+                    -Uri $uri `
+                    -Method PATCH `
+                    -Payload ($body | ConvertTo-Json -Depth 100 -Compress)
+        if ($resp.StatusCode -ge 400) {
+            throw $resp.Content
         }
+        
+        $App = Get-AzADApplication -ObjectId $App.Id
 
-        $patchRequiredResourceAccess = @{requiredResourceAccess=$requiredResourceAccess}
-
-        $response = Invoke-AzCliRestCommand -Uri $graphApiAppUri `
-                                            -Method 'PATCH' `
-                                            -Body $patchRequiredResourceAccess
-
-        $appManifest = Invoke-AzCliRestCommand -Uri $graphApiAppUri
-
-        return $appManifest
+        return $App
     }
 }
