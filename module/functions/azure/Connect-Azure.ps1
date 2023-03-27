@@ -68,11 +68,14 @@ function Connect-Azure
     # Attempt to detect if we're running interactively or inside a build server
     $isInteractive = [Environment]::UserInteractive -and !(Test-Path env:\SYSTEM_TEAMFOUNDATIONSERVERURI)
 
-    # Check whether the required environment variables are available to enable an auto-login
+    # Check whether the required environment variables are available to enable an auto-login with SP secret
     $requiredEnvVarsForAutoLogin = (
         ![string]::IsNullOrEmpty($env:AZURE_CLIENT_ID) -and `
         ![string]::IsNullOrEmpty($env:AZURE_CLIENT_SECRET)
     )
+
+    # Check whether the required environment variables are available to enable an auto-login with a managed identity
+    $requiredEnvVarsForManagedIdLogin = ![string]::IsNullOrEmpty($env:AZURE_CLIENT_ID)
 
     if (-not $SkipAzPowerShell) {
         Write-Host "Validating Az PowerShell connection"
@@ -101,6 +104,14 @@ function Connect-Azure
                 $connectSplat += @{
                     ServicePrincipal = $true
                     Credential = $pscredential
+                }
+                $shouldAttemptLogin = $true
+            }
+            elseif ($requiredEnvVarsForManagedIdLogin) {
+                Write-Host "Not currently logged-in to Az PowerShell - attempting login via Managed Identity [ClientId=$env:AZURE_CLIENT_ID]"
+                $connectSplat += @{
+                    AccountId = $env:AZURE_CLIENT_ID
+                    Identity = $true
                 }
                 $shouldAttemptLogin = $true
             }
