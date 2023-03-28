@@ -81,7 +81,7 @@ function Assert-RequiredResourceAccessContains
         }
         
         $App = Get-AzADApplication -ObjectId $App.Id
-
-        return $App
     }
+
+    return $App
 }
