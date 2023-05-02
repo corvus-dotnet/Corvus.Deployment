@@ -27,73 +27,68 @@ The value for the application role.
 .PARAMETER AllowedMemberTypes
 Allowed member types for the application (User / Application)
 
-.PARAMETER UseAzureAdGraph
-By default, the Microsoft Graph will be used for the graph operations. If you enable this switch, the legacy Azure AD Graph will be used instead.
-
 .OUTPUTS
-Microsoft.Azure.Commands.ActiveDirectory.PSADApplication
+Microsoft.Azure.PowerShell.Cmdlets.Resources.MSGraph.Models.ApiV10.MicrosoftGraphApplication
 #>
 function Assert-AzureAdAppRole
 {
     [CmdletBinding()]
     param 
     (
+        [Parameter(Mandatory=$true)]
         [string] $AppObjectId,
+
+        [Parameter(Mandatory=$true)]
         [string] $AppRoleId,
+
+        [Parameter(Mandatory=$true)]
         [string] $DisplayName,
+
+        [Parameter(Mandatory=$true)]
         [string] $Description,
+
+        [Parameter(Mandatory=$true)]
         [string] $Value,
+        
+        [Parameter(Mandatory=$true)]
         [string[]] $AllowedMemberTypes,
-        [switch] $UseAzureAdGraph
+
+        [bool] $Enabled = $true
     )
     
     # Check whether we have a valid AzPowerShell connection, but no subscription-level access is required
     _EnsureAzureConnection -AzPowerShell -TenantOnly -ErrorAction Stop | Out-Null
 
-    $TenantId = $script:moduleContext.AadTenantId
+    $app = Get-AzADApplication -Id $AppObjectId
 
-    $AppUriSegment = ("applications/{0}" -f $AppObjectId)
-
-    $GraphApiAppUri = $UseAzureAdGraph ?
-        "https://graph.windows.net/{0}/{1}?api-version=1.5" -f $TenantId, $AppUriSegment : 
-        "https://graph.microsoft.com/v1.0/{0}" -f $AppUriSegment
-
-
-    $App = Invoke-AzCliRestCommand -Uri $GraphApiAppUri
-
-    $AppRoles = $App.appRoles
-
-    $AppRole = $AppRoles | Where-Object { $_.id -eq $AppRoleId }
+    $AppRole = $app.AppRoles | Where-Object { $_.id -eq $AppRoleId }
 
     if ($AppRole) {
-        Write-Host "Updating $Value app role"
+        Write-Host "Updating '$Value' app role"
 
-        $AppRole.isEnabled = $true
+        $AppRole.displayName = $DisplayName
+        $AppRole.isEnabled = $Enabled
         $AppRole.description = $Description
         $AppRole.value = $Value
         $AppRole.allowedMemberTypes = $AllowedMemberTypes
     }
     else {
-        Write-Host "Adding $Value app role"
+        Write-Host "Adding '$Value' app role"
 
         $AppRole = @{
             displayName = $DisplayName
             id = $AppRoleId
-            isEnabled = $true
+            isEnabled = $Enabled
             description = $Description
             value = $Value
             allowedMemberTypes = $AllowedMemberTypes
         }
-        $AppRoles += $AppRole
+        $app.AppRoles += $AppRole
     }
 
-    $UpdateResponse = Invoke-AzCliRestCommand `
-        -Uri $GraphApiAppUri `
-        -Method "PATCH" `
-        -Body @{appRoles=$AppRoles}
+    Update-AzADApplication -ObjectId $AppObjectId -AppRole $app.AppRoles
 
-    $App = Invoke-AzCliRestCommand -Uri $GraphApiAppUri
+    $app = Get-AzADApplication -Id $AppObjectId
 
-    return $App
-    
+    return $app
 }
