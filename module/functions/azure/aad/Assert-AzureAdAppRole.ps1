@@ -81,7 +81,7 @@ function Assert-AzureAdAppRole
                                         -DifferenceObject $appRoleFromParams `
                                         -Property ([array]$appRoleFromParams.Keys)
         if ($compareResult) {
-            Write-Host "Updating '$Value' app role"
+            Write-Host "AppRole '$Value': UPDATING"
             $appRole.displayName = $DisplayName
             $appRole.isEnabled = $Enabled
             $appRole.description = $Description
@@ -89,12 +89,12 @@ function Assert-AzureAdAppRole
             $appRole.allowedMemberType = $AllowedMemberTypes
         }
         else {
-            Write-Host "App role '$Value' is up-to-date"
+            Write-Host "AppRole '$Value': NO CHANGES"
             $doUpdate = $false
         }
     }
     else {
-        Write-Host "Adding '$Value' app role"
+        Write-Host "AppRole '$Value': CREATING"
         $appRole = New-Object -TypeName "Microsoft.Azure.PowerShell.Cmdlets.Resources.MSGraph.Models.ApiV10.MicrosoftGraphAppRole" `
                         -Property @{
                             displayName = $DisplayName

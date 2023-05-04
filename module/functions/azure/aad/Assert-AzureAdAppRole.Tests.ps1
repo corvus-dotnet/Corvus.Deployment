@@ -34,7 +34,7 @@ Describe "Assert-AzureAdAppRole Tests" {
 
     Context "When no application roles are defined" {
 
-        Mock Write-Host {} -ParameterFilter { $Object.StartsWith("Adding") }
+        Mock Write-Host {} -ParameterFilter { $Object.EndsWith("CREATING") }
         Mock Update-AzADApplication {} -ParameterFilter { $ObjectId -eq $mockAppObjectId -and $AppRole[0].allowedMemberType -eq $mockAppRole.allowedMemberType }
         Mock Get-AzADApplication {
             @{
@@ -56,7 +56,7 @@ Describe "Assert-AzureAdAppRole Tests" {
     }
 
     Context "When another application role is already defined" {
-        Mock Write-Host {} -ParameterFilter { $Object.StartsWith("Adding") }
+        Mock Write-Host {} -ParameterFilter { $Object.EndsWith("CREATING") }
         Mock Update-AzADApplication {} -ParameterFilter { $ObjectId -eq $mockAppObjectId -and $AppRole[1].allowedMemberType -eq $mockAppRole.allowedMemberType }
         Mock Get-AzADApplication {
             @{
@@ -90,7 +90,7 @@ Describe "Assert-AzureAdAppRole Tests" {
 
         $updatedDescription = "Modified Test App Role"
 
-        Mock Write-Host {} -ParameterFilter { $Object.StartsWith("Updating") }
+        Mock Write-Host {} -ParameterFilter { $Object.EndsWith("UPDATING") }
         Mock Update-AzADApplication {} -ParameterFilter { $ObjectId -eq $mockAppObjectId -and $AppRole[0].description -eq $updatedDescription }
         Mock Get-AzADApplication {
             @{
@@ -113,7 +113,7 @@ Describe "Assert-AzureAdAppRole Tests" {
 
     Context "When an existing application role is up-to-date" {
 
-        Mock Write-Host {} -ParameterFilter { $Object.StartsWith("App role") }
+        Mock Write-Host {} -ParameterFilter { $Object.EndsWith("NO CHANGES") }
         Mock Update-AzADApplication {} -ParameterFilter { $ObjectId -eq $mockAppObjectId -and $AppRole[0].description -eq $updatedDescription }
         Mock Get-AzADApplication {
             @{
