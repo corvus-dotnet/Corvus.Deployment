@@ -27,6 +27,9 @@ The value for the application role.
 .PARAMETER AllowedMemberTypes
 Allowed member types for the application (User / Application)
 
+.PARAMETER Enabled
+When true, the application is enabled for use otherwise it will not be usable.
+
 .OUTPUTS
 Microsoft.Azure.PowerShell.Cmdlets.Resources.MSGraph.Models.ApiV10.MicrosoftGraphApplication
 #>
