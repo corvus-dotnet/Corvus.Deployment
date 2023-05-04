@@ -3,6 +3,8 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".Tests.ps1", ".p
 
 . "$here\$sut"
 
+Import-Module Az.Resources
+
 # define other functions that will be mocked
 function _EnsureAzureConnection {}
 function Get-AzADApplication {}
@@ -19,7 +21,7 @@ Describe "Assert-AzureAdAppRole Tests" {
         isEnabled = $true
         description = "A Test App Role"
         value = "TestRole"
-        allowedMemberTypes = @("User")
+        allowedMemberType = @("User")
     }
 
     $commonParams = @{
@@ -30,15 +32,15 @@ Describe "Assert-AzureAdAppRole Tests" {
         AllowedMemberTypes = @("User")
     }
 
-    Context "Adding a first application role" {
+    Context "When no application roles are defined" {
 
         Mock Write-Host {} -ParameterFilter { $Object.StartsWith("Adding") }
-        Mock Update-AzADApplication {} -ParameterFilter { $ObjectId -eq $mockAppObjectId -and $AppRole[0].allowedMemberTypes -eq $mockAppRole.allowedMemberTypes }
+        Mock Update-AzADApplication {} -ParameterFilter { $ObjectId -eq $mockAppObjectId -and $AppRole[0].allowedMemberType -eq $mockAppRole.allowedMemberType }
         Mock Get-AzADApplication {
             @{
                 Id = $mockAppObjectId
                 AppId = $mockAppId
-                AppRoles = @()
+                AppRole = @()
             }
         }
 
@@ -53,21 +55,21 @@ Describe "Assert-AzureAdAppRole Tests" {
         }
     }
 
-    Context "Adding an additional application role" {
+    Context "When another application role is already defined" {
         Mock Write-Host {} -ParameterFilter { $Object.StartsWith("Adding") }
-        Mock Update-AzADApplication {} -ParameterFilter { $ObjectId -eq $mockAppObjectId -and $AppRole[1].allowedMemberTypes -eq $mockAppRole.allowedMemberTypes }
+        Mock Update-AzADApplication {} -ParameterFilter { $ObjectId -eq $mockAppObjectId -and $AppRole[1].allowedMemberType -eq $mockAppRole.allowedMemberType }
         Mock Get-AzADApplication {
             @{
                 Id = $mockAppObjectId
                 AppId = $mockAppId
-                AppRoles = @(
+                AppRole = @(
                     @{
                         displayName = "Existing App Role"
                         id = New-Guid | Select-Object -ExpandProperty Guid
                         isEnabled = $true
                         description = "An Existing App Role"
                         value = "ExistingAppRole"
-                        allowedMemberTypes = @("Application")
+                        allowedMemberType = @("Application")
                     }
                 )
             }
@@ -84,7 +86,7 @@ Describe "Assert-AzureAdAppRole Tests" {
         }
     } 
 
-    Context "Update an existing application role" {
+    Context "When an existing application role is out-of-date" {
 
         $updatedDescription = "Modified Test App Role"
 
@@ -94,7 +96,7 @@ Describe "Assert-AzureAdAppRole Tests" {
             @{
                 Id = $mockAppObjectId
                 AppId = $mockAppId
-                AppRoles = @($mockAppRole)
+                AppRole = @($mockAppRole)
             }
         }
 
@@ -106,6 +108,29 @@ Describe "Assert-AzureAdAppRole Tests" {
             Assert-MockCalled Get-AzADApplication -Times 2
             Assert-MockCalled Update-AzADApplication -Times 1
             Assert-MockCalled Write-Host -Times 1       # asserts the 'update' code path
+        }
+    }
+
+    Context "When an existing application role is up-to-date" {
+
+        Mock Write-Host {} -ParameterFilter { $Object.StartsWith("App role") }
+        Mock Update-AzADApplication {} -ParameterFilter { $ObjectId -eq $mockAppObjectId -and $AppRole[0].description -eq $updatedDescription }
+        Mock Get-AzADApplication {
+            @{
+                Id = $mockAppObjectId
+                AppId = $mockAppId
+                AppRole = @($mockAppRole)
+            }
+        }
+
+        $res = Assert-AzureAdAppRole `
+                    -Description $mockAppRole.description `
+                    @commonParams
+
+        It "should update the new application role" {
+            Assert-MockCalled Get-AzADApplication -Times 1
+            Assert-MockCalled Update-AzADApplication -Times 0
+            Assert-MockCalled Write-Host -Times 1       # asserts the 'no change' code path
         }
     }
 }

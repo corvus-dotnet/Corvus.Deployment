@@ -55,40 +55,63 @@ function Assert-AzureAdAppRole
 
         [bool] $Enabled = $true
     )
-    
+
     # Check whether we have a valid AzPowerShell connection, but no subscription-level access is required
     _EnsureAzureConnection -AzPowerShell -TenantOnly -ErrorAction Stop | Out-Null
 
     $app = Get-AzADApplication -Id $AppObjectId
 
-    $AppRole = $app.AppRoles | Where-Object { $_.id -eq $AppRoleId }
+    # Check whether the AppRole is already defined
+    $appRole = $app.AppRole | Where-Object { $_.id -eq $AppRoleId }
+    
+    # Prepare an AppRole object using the supplied values
+    $appRoleFromParams = @{
+        displayName = $DisplayName
+        id = $AppRoleId
+        isEnabled = $Enabled
+        description = $Description
+        value = $Value
+        allowedMemberType = $AllowedMemberTypes
+    }
 
-    if ($AppRole) {
-        Write-Host "Updating '$Value' app role"
-
-        $AppRole.displayName = $DisplayName
-        $AppRole.isEnabled = $Enabled
-        $AppRole.description = $Description
-        $AppRole.value = $Value
-        $AppRole.allowedMemberTypes = $AllowedMemberTypes
+    # Idempotency logic to decide whether an update is required
+    $doUpdate = $true
+    if ($appRole) {
+        $compareResult = Compare-Object -ReferenceObject $appRole `
+                                        -DifferenceObject $appRoleFromParams `
+                                        -Property ([array]$appRoleFromParams.Keys)
+        if ($compareResult) {
+            Write-Host "Updating '$Value' app role"
+            $appRole.displayName = $DisplayName
+            $appRole.isEnabled = $Enabled
+            $appRole.description = $Description
+            $appRole.value = $Value
+            $appRole.allowedMemberType = $AllowedMemberTypes
+        }
+        else {
+            Write-Host "App role '$Value' is up-to-date"
+            $doUpdate = $false
+        }
     }
     else {
         Write-Host "Adding '$Value' app role"
-
-        $AppRole = @{
-            displayName = $DisplayName
-            id = $AppRoleId
-            isEnabled = $Enabled
-            description = $Description
-            value = $Value
-            allowedMemberTypes = $AllowedMemberTypes
-        }
-        $app.AppRoles += $AppRole
+        $appRole = New-Object -TypeName "Microsoft.Azure.PowerShell.Cmdlets.Resources.MSGraph.Models.ApiV10.MicrosoftGraphAppRole" `
+                        -Property @{
+                            displayName = $DisplayName
+                            id = $AppRoleId
+                            isEnabled = $Enabled
+                            description = $Description
+                            value = $Value
+                            allowedMemberType = $AllowedMemberTypes
+                        }
+        $app.AppRole += @($appRole)
     }
 
-    Update-AzADApplication -ObjectId $AppObjectId -AppRole $app.AppRoles
+    if ($doUpdate) {
+        Update-AzADApplication -ObjectId $AppObjectId -AppRole $app.AppRole
 
-    $app = Get-AzADApplication -Id $AppObjectId
+        $app = Get-AzADApplication -Id $AppObjectId    
+    }
 
     return $app
 }
