@@ -10,7 +10,7 @@ try {
     Import-Module Pester -RequiredVersion $pesterVer
 
     # Install other modules required by the tests
-    $latestExistingAzResourcesModule = Get-Module -ListAvailable Az.Resources | Select -ExpandProperty Version | Sort -Descending | Select -First 1
+    $latestExistingAzResourcesModule = Get-Module -ListAvailable Az.Resources | Select-Object -ExpandProperty Version | Sort-Object -Descending | Select-Object -First 1
     if (!$latestExistingAzResourcesModule -or $latestExistingAzResourcesModule -lt "6.5.3") {
         Write-Host "Installing module: Az.Resources ..."
         Install-Module Az.Resources -MinimumVersion "6.5.3" -Force -Scope CurrentUser
