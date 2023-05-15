@@ -94,7 +94,7 @@ function Assert-AzdoServiceConnection
     if (!$existingAdoServiceConnection) {
         Write-Host "A new ADO service connection will be created"
         $existingSp,$spSecret = Assert-AzureServicePrincipalForRbac -Name $ServicePrincipalName `
-                                                                    -CredentialDisplayName "Created by MDP bootstrap process" `
+                                                                    -CredentialDisplayName "Azure DevOps service connection management process" `
                                                                     -RotateSecret:$AllowSecretReset `
                                                                     -WhatIf:$WhatIfPreference
         
