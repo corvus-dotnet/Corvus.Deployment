@@ -93,22 +93,11 @@ function Assert-AzdoServiceConnection
     if (!$existingAdoServiceConnection) {
         Write-Host "A new ADO service connection will be created"
         $existingSp,$spSecret = Assert-AzureServicePrincipalForRbac -Name $ServicePrincipalName `
+                                                                    -CredentialDisplayName "Created by MDP bootstrap process" `
+                                                                    -RotateSecret:$AllowSecretReset `
                                                                     -WhatIf:$WhatIfPreference
         
-        # check we have the secret for the SPN
-        if (!$spSecret -and $AllowSecretReset) {
-            if ($PSCmdlet.ShouldProcess($Name, "Reset Service Principal Credential")) {
-                Write-Warning "The service principal already exists, but the secret is not available.  The secret will be reset as '-AllowSecretReset' was specified"
-    
-                $resetSecretArgs = @(
-                    "ad sp credential reset"
-                    "--name $($existingSp.appId)"
-                )
-                $updatedSp = Invoke-AzCli $resetSecretArgs -asJson
-                $spSecret = $updatedSp.password
-            }
-        }
-        elseif (!$spSecret) {
+        if (!$spSecret) {
             throw "The service principal already exists, but the secret is not available.  To reset the secret specify the '-AllowSecretReset' parameter."
         }
 
