@@ -46,6 +46,7 @@ Returns a hashtable representing the JSON object describing the service connecti
 function Assert-AzdoServiceConnection
 {
     [CmdletBinding(SupportsShouldProcess)]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', '', Justification='CredentialDisplayName does not contain a password')]
     param (
         [Parameter(Mandatory=$true)]
         [string] $Name,
@@ -54,6 +55,7 @@ function Assert-AzdoServiceConnection
         [string] $Project,
 
         [Parameter(Mandatory=$true)]
+        [Alias("Organization")]
         [string] $Organisation,
 
         [Parameter()]
@@ -66,7 +68,10 @@ function Assert-AzdoServiceConnection
         [string] $ServicePrincipalName,
 
         [Parameter()]
-        [switch] $AllowSecretReset
+        [switch] $AllowSecretReset,
+
+        [Parameter()]
+        [string] $CredentialDisplayName = "Azure DevOps service connection scripted process"
     )
 
     _EnsureAzureConnection -AzureCli | Out-Null
@@ -93,22 +98,11 @@ function Assert-AzdoServiceConnection
     if (!$existingAdoServiceConnection) {
         Write-Host "A new ADO service connection will be created"
         $existingSp,$spSecret = Assert-AzureServicePrincipalForRbac -Name $ServicePrincipalName `
+                                                                    -CredentialDisplayName $CredentialDisplayName `
+                                                                    -RotateSecret:$AllowSecretReset `
                                                                     -WhatIf:$WhatIfPreference
         
-        # check we have the secret for the SPN
-        if (!$spSecret -and $AllowSecretReset) {
-            if ($PSCmdlet.ShouldProcess($Name, "Reset Service Principal Credential")) {
-                Write-Warning "The service principal already exists, but the secret is not available.  The secret will be reset as '-AllowSecretReset' was specified"
-    
-                $resetSecretArgs = @(
-                    "ad sp credential reset"
-                    "--name $($existingSp.appId)"
-                )
-                $updatedSp = Invoke-AzCli $resetSecretArgs -asJson
-                $spSecret = $updatedSp.password
-            }
-        }
-        elseif (!$spSecret) {
+        if (!$spSecret) {
             throw "The service principal already exists, but the secret is not available.  To reset the secret specify the '-AllowSecretReset' parameter."
         }
 
