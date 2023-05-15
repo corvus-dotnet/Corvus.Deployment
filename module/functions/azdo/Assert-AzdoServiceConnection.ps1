@@ -54,6 +54,7 @@ function Assert-AzdoServiceConnection
         [string] $Project,
 
         [Parameter(Mandatory=$true)]
+        [Alias("Organization")]
         [string] $Organisation,
 
         [Parameter()]

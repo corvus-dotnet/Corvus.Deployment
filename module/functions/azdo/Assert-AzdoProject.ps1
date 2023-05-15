@@ -30,6 +30,7 @@ function Assert-AzdoProject
         [string] $Name,
 
         [Parameter()]
+        [Alias("Organization")]
         [string] $Organisation,
 
         [Parameter()]

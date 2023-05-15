@@ -41,6 +41,7 @@ function Assert-AzdoGroupMembership
         [string] $Project,
 
         [Parameter()]
+        [Alias("Organization")]
         [string] $Organisation,
 
         [Parameter()]
