@@ -130,6 +130,7 @@ function _getGroupMembers {
     # ref: https://docs.microsoft.com/en-us/graph/api/group-list-members?view=graph-rest-1.0&tabs=http
     
     Invoke-AzRestMethod -Uri "https://graph.microsoft.com/beta/groups/$($GroupObjectId.Guid)/members" |
+        _HandleRestError |
         Select-Object -ExpandProperty Content |
         ConvertFrom-Json |
         Select-Object -ExpandProperty value

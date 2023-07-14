@@ -75,10 +75,7 @@ function Assert-RequiredResourceAccessContains
         $resp = Invoke-AzRestMethod `
                     -Uri $uri `
                     -Method PATCH `
-                    -Payload ($body | ConvertTo-Json -Depth 100 -Compress)
-        if ($resp.StatusCode -ge 400) {
-            throw $resp.Content
-        }
+                    -Payload ($body | ConvertTo-Json -Depth 100 -Compress) | _HandleRestError
         
         $App = Get-AzADApplication -ObjectId $App.Id
     }
