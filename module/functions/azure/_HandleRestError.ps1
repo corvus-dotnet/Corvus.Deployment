@@ -19,7 +19,7 @@ function _HandleRestError
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true, ValueFromPipeline=$true)]
-        [PSHttpResponse] $Response
+        [Microsoft.Azure.Commands.Profile.Models.PSHttpResponse] $Response
     )
 
     # NOTE: 
