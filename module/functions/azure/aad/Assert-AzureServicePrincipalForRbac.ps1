@@ -180,7 +180,7 @@ function Assert-AzureServicePrincipalForRbac
             Write-Host "Removing existing credential [DisplayName=$CredentialDisplayName; KeyId=$($existingCred.keyId)]"
             $resp = Invoke-AzRestMethod -Uri "$baseUri/removePassword" `
                                         -Method POST `
-                                        -Payload ( @{keyId = $existingCred.keyId} | ConvertTo-Json -Compress )
+                                        -Payload ( @{keyId = $existingCred.keyId} | ConvertTo-Json -Compress ) | _HandleRestError
         }   
 
         # Now we can generate the new credential - we use the REST API rather than a build cmdlet so that
@@ -194,7 +194,7 @@ function Assert-AzureServicePrincipalForRbac
         }
         $resp = Invoke-AzRestMethod -Uri "$baseUri/addPassword" `
                                     -Method POST `
-                                    -Payload ($body | ConvertTo-Json -Compress)
+                                    -Payload ($body | ConvertTo-Json -Compress) | _HandleRestError
         $newCred = $resp.Content |
                         ConvertFrom-Json -AsHashtable
         
@@ -226,7 +226,7 @@ function Assert-AzureServicePrincipalForRbac
             $DisplayName
         )
 
-        $resp = Invoke-AzRestMethod -Uri "https://graph.microsoft.com/v1.0/applications?`$filter=displayName eq '$DisplayName'"
+        $resp = Invoke-AzRestMethod -Uri "https://graph.microsoft.com/v1.0/applications?`$filter=displayName eq '$DisplayName'" | _HandleRestError
         $app = $resp.Content |
                     ConvertFrom-Json -AsHashtable -Depth 100 |
                     Select-Object -ExpandProperty value
@@ -244,7 +244,7 @@ function Assert-AzureServicePrincipalForRbac
         Write-Verbose "Creating app registation object [DisplayName=$DisplayName]"
         $resp = Invoke-AzRestMethod -Uri "https://graph.microsoft.com/v1.0/applications" `
                                     -Method POST `
-                                    -Payload ($payload | ConvertTo-Json)
+                                    -Payload ($payload | ConvertTo-Json) | _HandleRestError
         $newApp = $resp.Content |
                     ConvertFrom-Json -AsHashtable
         Write-Verbose "Created app registation object [AppId=$($newApp.appId); Id=$($newApp.id)]"
@@ -258,7 +258,7 @@ function Assert-AzureServicePrincipalForRbac
             $DisplayName
         )
 
-        $resp = Invoke-AzRestMethod -Uri "https://graph.microsoft.com/v1.0/servicePrincipals?`$filter=displayName eq '$DisplayName'"
+        $resp = Invoke-AzRestMethod -Uri "https://graph.microsoft.com/v1.0/servicePrincipals?`$filter=displayName eq '$DisplayName'" | _HandleRestError
         $sp = $resp.Content |
                     ConvertFrom-Json -AsHashtable -Depth 100 |
                     Select-Object -ExpandProperty value
@@ -284,7 +284,7 @@ function Assert-AzureServicePrincipalForRbac
         Write-Verbose "Creating service principal object [AppId=$($app.appId)]"
         $resp = Invoke-AzRestMethod -Uri "https://graph.microsoft.com/v1.0/servicePrincipals" `
                                      -Method POST `
-                                     -Payload ($payload | ConvertTo-Json)
+                                     -Payload ($payload | ConvertTo-Json) | _HandleRestError
         $newSp = $resp.Content |
                     ConvertFrom-Json -AsHashtable
         Write-Verbose "Created service principal object [Id=$($newSp.id)]"

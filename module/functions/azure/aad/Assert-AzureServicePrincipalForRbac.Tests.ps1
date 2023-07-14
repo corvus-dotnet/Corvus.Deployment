@@ -9,6 +9,7 @@ function Set-AzKeyVaultSecret {}
 function Get-AzContext {}
 function Invoke-AzRestMethod { param($Uri, $Method, $Payload) }
 function _EnsureAzureConnection {}
+function _HandleRestError { param([Parameter(ValueFromPipeline=$true)]$Response) return $Response }
 function Write-Host {}
 
 Describe "Assert-AzureServicePrincipalForRbac Tests" {
