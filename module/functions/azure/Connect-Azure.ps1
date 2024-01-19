@@ -123,7 +123,15 @@ function Connect-Azure
 
             # Attempt to login to Azure PowerShell
             if ($shouldAttemptLogin) {
-                Connect-AzAccount @connectSplat | Out-Null
+                $connectWarns = $null
+                $newCtx = Connect-AzAccount @connectSplat -WarningVariable connectWarns
+                if (!$newCtx -and $connectWarns -match "Connect-AzAccount -UseDeviceAuthentication") {
+                    Write-Host "Falling-back to DeviceCode authentication flow"
+                    $newCtx = Connect-AzAccount @connectSplat -UseDeviceAuthentication
+                }
+                if (!$newCtx) {
+                    throw "Manual login to Azure PowerShell failed - check previous output."
+                }
             }
             else {
                 throw "Not currently connected to Azure PowerShell and unable to attempt an auto or manual login.  For unattended scenarios set the 'AZURE_CLIENT_ID' and 'AZURE_CLIENT_SECRET' environment variables."
@@ -136,6 +144,7 @@ function Connect-Azure
             # Try to switch to the required subscription, if we are connected to the right tenant.
             # This avoids an unnecessary validation failure when we're connected to the right tenant,
             # but not the intended subscription
+            Write-Host "Switching to required subcription: $SubscriptionId"
             Set-AzContext -SubscriptionId $SubscriptionId | Out-Null
         }
 
