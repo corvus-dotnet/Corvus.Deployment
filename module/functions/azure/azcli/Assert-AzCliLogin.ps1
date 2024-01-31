@@ -62,25 +62,29 @@ function Assert-AzCliLogin {
         if ($requiredEnvVarsForAutoLogin) {
             Write-Host "Performing azure-cli login as service principal via environment variables"
             $azCliParams = @(
-                "login"
                 "--service-principal"
-                "-u `"$($env:AZURE_CLIENT_ID)`""
-                "-p `"$($env:AZURE_CLIENT_SECRET)`""
-                "--tenant $AadTenantId"
+                "-u", $env:AZURE_CLIENT_ID
+                "-p", "`"$($env:AZURE_CLIENT_SECRET)`""
+                "--tenant", $AadTenantId
             )
             if ($TenantOnly) {
                 $azCliParams += "--allow-no-subscriptions"
             }
-            Invoke-AzCli -Command $azCliParams `
-                         -SuppressConnectionValidation
+
+            & az login @azCliParams
+            if ($LASTEXITCODE -ne 0) {
+                throw "Service Principal login to Azure CLI failed - check previous output."
+            }
         }
         # Azure pipeline processes seem to report themselves as interactive - at least on linux agents
         elseif ( [Environment]::UserInteractive -and !(Test-Path env:\SYSTEM_TEAMFOUNDATIONSERVERURI) ) {
-            Invoke-AzCli -Command "login --tenant $AadTenantId" `
-                         -SuppressConnectionValidation
+            & az login --tenant $AadTenantId
+            if ($LASTEXITCODE -ne 0) {
+                throw "Manual login to Azure CLI failed - check previous output."
+            }
         }
         else {
-            Write-Error "When running non-interactively the process must already be logged-in to the Azure-cli or have the SPN details setup in environment variables"
+            throw "When running non-interactively the process must already be logged-in to the Azure-cli or have the SPN details setup in environment variables"
         }
     }
 
