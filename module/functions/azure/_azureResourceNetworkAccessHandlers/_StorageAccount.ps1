@@ -5,16 +5,16 @@
 function _removeExistingTempRules_StorageAccount {
     <#
     .SYNOPSIS
-    Implements the handler for removing temporary network access rule(s) for Azure SQL Server.
+    Implements the handler for removing temporary network access rule(s) for Azure Storage Account.
 
     .DESCRIPTION
-    Implements the handler for removing temporary network access rule(s) for Azure SQL Server.
+    Implements the handler for removing temporary network access rule(s) for Azure Storage Account.
 
     .PARAMETER ResourceGroupName
-    The resource group of the SQL Server instance being updated.
+    The resource group of the Storage Account instance being updated.
 
     .PARAMETER ResourceName
-    The name of the SQL Server instance being updated.
+    The name of the Storage Account instance being updated.
 
     .NOTES
     Handlers expect the following script-level variables to have been defined by their caller, which of them are
@@ -52,16 +52,16 @@ function _removeExistingTempRules_StorageAccount {
 function _addTempRule_StorageAccount {
     <#
     .SYNOPSIS
-    Implements the handler for adding temporary network access rule for Azure SQL Server.
+    Implements the handler for adding temporary network access rule for Azure Storage Account.
 
     .DESCRIPTION
-    Implements the handler for adding temporary network access rule for Azure SQL Server.
+    Implements the handler for adding temporary network access rule for Azure Storage Account.
 
     .PARAMETER ResourceGroupName
-    The resource group of the SQL Server instance being updated.
+    The resource group of the Storage Account instance being updated.
 
     .PARAMETER ResourceName
-    The name of the SQL Server instance being updated.
+    The name of the Storage Account instance being updated.
 
     .NOTES
     Handlers expect the following script-level variables to have been defined by their caller, which of them are
