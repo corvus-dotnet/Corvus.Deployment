@@ -2,7 +2,6 @@
 # Copyright (c) Endjin Limited. All rights reserved.
 # </copyright>
 
-Set-StrictMode -Version Latest
 
 function _removeExistingTempRules_WebAppScm {
     <#
