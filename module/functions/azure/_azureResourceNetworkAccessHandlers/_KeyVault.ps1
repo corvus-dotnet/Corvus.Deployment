@@ -41,9 +41,11 @@ function _removeExistingTempRules_KeyVault {
         Select-Object -ExpandProperty NetworkAcls |
         Select-Object -ExpandProperty IpAddressRanges 
 
+    # Key Vault stores IP addresses with a '/32' suffix even when it wasn't specified when adding the rule (unlike Storage Accounts)
+    $currentPublicIpAddressForKv = "{0}/32" -f $script:currentPublicIpAddress
+
     # Key vault network rules do not support comments so we can only filter by our current IP address
-    $updatedAllowedIPs = $currentAllowedIPs.IpAddressRanges |
-                        Where-Object { $_ -ne $script:currentPublicIpAddress }
+    $updatedAllowedIPs = $currentAllowedIPs | Where-Object { $_ -ne $currentPublicIpAddressForKv }
 
     Update-AzKeyVaultNetworkRuleSet `
         -ResourceGroupName $ResourceGroupName `
