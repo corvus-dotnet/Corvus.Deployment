@@ -25,6 +25,7 @@ Describe "Set-TemporaryAzureResourceNetworkAccess Integration Tests" -Tag Integr
     AfterAll {
         Write-Host "`n`nCleaning-up Azure test resources..."
         Remove-AzResourceGroup -ResourceGroupName $rg -Force
+        Remove-AzKeyVault -VaultName $suffix -Location $location -InRemovedState -Force
     }
 
     Context "Azure Storage Account" {
@@ -195,6 +196,54 @@ Describe "Set-TemporaryAzureResourceNetworkAccess Integration Tests" -Tag Integr
 
             $resp = Invoke-WebRequest -uri https://$($web.DefaultHostName) -SkipHttpErrorCheck
             $resp.StatusCode | Should -Be 403
+        }
+    }
+
+    Context "Azure Key Vault" {
+        Mock Write-Host {}
+    
+        BeforeAll {
+            # Create key vault
+            $kvParams = @{
+                ResourceGroupName = $rg
+                Name = $suffix
+                Sku = "Standard"
+                Tag = @{Environment = "Pester"}
+                Location = $location
+                EnablePurgeProtection = $false
+                EnableRbacAuthorization = $true
+            }
+            New-AzKeyVault @kvParams -ErrorAction Ignore | Out-Null
+            $kv = Get-AzKeyVault -ResourceGroupName $kvParams.ResourceGroupName -Name $kvParams.Name
+            
+            # Ensure the test has the necessary data-plane permissions
+            New-AzRoleAssignment -Scope $kv.ResourceId -RoleDefinitionName "Key Vault Secrets Officer" -ObjectId $currentUser.Id -ErrorAction Ignore
+            
+            # Lockdown access to the storage account
+            $kv | Update-AzKeyVaultNetworkRuleSet -DefaultAction Deny -Bypass None
+
+            # Pause to ensure the change has taken effect
+            Write-Host "Waiting for key vault firewall to update..."
+            Start-Sleep -Seconds 10
+        }
+
+        It "should not have permissions before enabling temporary network access" {
+            { Get-AzKeyVaultSecret -VaultName $suffix -SecretName "foo" -ErrorAction Stop } |
+                Should -Throw "Operation returned an invalid status code 'Forbidden'"
+        }
+        
+        It "should connect successfully after waiting for the temporary network access" {
+            Set-TemporaryAzureResourceNetworkAccess -ResourceType KeyVault -ResourceGroupName $rg -ResourceName $suffix
+            Start-Sleep -Seconds 5
+            Get-AzKeyVaultSecret -VaultName $suffix -SecretName "foo" -ErrorAction Stop |
+                Should -Be $null
+        }
+        
+        It "should not have permissions after using the 'Revoke' flag" {
+            Set-TemporaryAzureResourceNetworkAccess -ResourceType KeyVault -ResourceGroupName $rg -ResourceName $suffix -Revoke -Wait
+
+            { Get-AzKeyVaultSecret -VaultName $suffix -SecretName "foo" -ErrorAction Stop } |
+                Should -Throw "Operation returned an invalid status code 'Forbidden'"
         }
     }
 }
