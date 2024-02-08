@@ -71,6 +71,11 @@ function Assert-AzCliLogin {
                 $azCliParams += "--allow-no-subscriptions"
             }
 
+            # The escaping we do above is incompatible with the revised argument parsing logic in
+            # PowerShell v7.3+ (when running on non-Windows). Temporarily revert to the legacy
+            # argument parsing mode to ensure we remain compatible with all PowerShell versions.
+            # The override will fall out of scope when this function returns.
+            $PSNativeCommandArgumentPassing = "Legacy"
             & az login @azCliParams
             if ($LASTEXITCODE -ne 0) {
                 throw "Service Principal login to Azure CLI failed - check previous output."
