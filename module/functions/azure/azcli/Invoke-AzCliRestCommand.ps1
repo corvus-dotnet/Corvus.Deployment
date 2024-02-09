@@ -107,6 +107,10 @@ function Invoke-AzCliRestCommand
         $cmdParts += "--headers '$headersAsEscapedJsonString'"
     }
 
-    $response = Invoke-AzCli -Command ($cmdParts -join " ") -AsJson
+    # The escaping we do for '$headersAsEscapedJsonString' above is incompatible with the revised argument parsing logic
+    # in recent versions of PowerShell. To ensure backwards-compatibility we need to use the 'UseLegacyNativeCommandArgumentPassing'
+    # option now offered by 'Invoke-AzCli', rather than updating the escaping logic.
+    # REF: https://learn.microsoft.com/en-us/powershell/scripting/learn/experimental-features?view=powershell-7.4#psnativecommandargumentpassing
+    $response = Invoke-AzCli -Command ($cmdParts -join " ") -AsJson -UseLegacyNativeCommandArgumentPassing
     return $response
 }

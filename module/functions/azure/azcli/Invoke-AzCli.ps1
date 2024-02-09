@@ -18,6 +18,17 @@ Controls whether you expect the command to have a JSON response that you want re
 .PARAMETER ExpectedExitCodes
 An array of exit codes that will not be treated as signifying an error.
 
+.PARAMETER SuppressConnectionValidation
+When specified, the normal connection validation will not be performed. This is useful when issuing
+commands before a connection has been established.
+
+.PARAMETER UseLegacyNativeCommandArgumentPassing
+When specified, '$PSNativeCommandArgumentPassing' will be set to 'Legacy'.  This is useful to maintain
+backwards-compatibility with versions of PowerShell (pre-7.3) for scenarios where Azure CLI
+command-line arguments require the use of escaped quotation marks.
+
+Ref: https://learn.microsoft.com/en-us/powershell/scripting/learn/experimental-features?view=powershell-7.4#psnativecommandargumentpassing
+
 .OUTPUTS
 When the '-AsJson' parameter is supplied, the JSON output from azure-cli will be returned as a hashtable.
 
@@ -33,7 +44,9 @@ function Invoke-AzCli
         
         [array] $ExpectedExitCodes = @(0),
 
-        [switch] $SuppressConnectionValidation
+        [switch] $SuppressConnectionValidation,
+
+        [switch] $UseLegacyNativeCommandArgumentPassing
     )
 
     # Ensure the AzureCLI is installed and available
@@ -89,6 +102,11 @@ function _invokeAzCli
     # have fallen back to using file-based redirection
     $azCliErrorLog = New-TemporaryFile
     try {
+        # Provide a mechanism to use the legacy native command argument passing. The override
+        # will fall out of scope when the function exits.
+        if ($UseLegacyNativeCommandArgumentPassing) {
+            $PSNativeCommandArgumentPassing = "Legacy"
+        }
 
         $output = Invoke-Expression $CommandLine 2> $($azCliErrorLog.FullName)
         $stdErr = Get-Content -Raw $azCliErrorLog
