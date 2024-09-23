@@ -49,6 +49,34 @@ Describe "_ResolveDeploymentConfigValues Tests" {
             $res.passwd | should -be "secret-password"
         }
     }
+
+    Context "Environment Variable Handler" {
+        It "should resolve the correct value" {
+            $mockConfig = @{
+                foo = "bar"
+                bar = $true
+                foobar = 2
+                passwd = "@EnvironmentVariable(TEST_ENV_VAR)" 
+            }
+            
+            $env:TEST_ENV_VAR = "value-from-env"
+
+            $res = _ResolveDeploymentConfigValues $mockConfig
+
+            $res.passwd | should -be "value-from-env"
+        }
+
+        It "should throw an exception if the environment variable does not exist" {
+            $mockConfig = @{
+                foo = "bar"
+                bar = $true
+                foobar = 2
+                passwd = "@EnvironmentVariable(NON_EXISTENT_ENV_VAR)" 
+            }
+
+            { _ResolveDeploymentConfigValues $mockConfig } | should -throw
+        }
+    }
 }
 
 Describe "_ResolveDeploymentConfigValues Integration Tests" -Tag Integration {
