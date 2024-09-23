@@ -39,7 +39,7 @@ function _keyVaultSecretUriHandler {
 }
 
 # Register this handler with _ResolveDeploymentConfigValues
-$script:configHandlers += @{
+[array]$script:configHandlers += @{
     name = "KeyVaultSecretUri"
     matcher = "@Microsoft.KeyVault\(SecretUri=(?<valueToResolve>.*)\)"
     handler = "_keyVaultSecretUriHandler"

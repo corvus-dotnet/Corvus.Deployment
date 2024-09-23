@@ -38,6 +38,10 @@ $ErrorActionPreference = 'Stop'
 $functions = Get-ChildItem -Recurse $PSScriptRoot/functions -Include *.ps1 | `
                                 Where-Object { $_ -notmatch ".Tests.ps1" }
                     
+# initialise the array that will be populated with the configuration handlers
+# when we dotsource the files below
+[array]$script:configHandlers = @()
+
 # dot source the individual scripts that make-up this module
 foreach ($function in ($functions)) { . $function.FullName }
 

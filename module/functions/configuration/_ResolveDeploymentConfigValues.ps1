@@ -52,11 +52,3 @@ function _invokeHandler {
 
     & $HandlerName $ValueToResolve
 }
-
-# Dynamically load the discovered configuration handlers
-$private:here = Split-Path -Parent $PSCommandPath
-$script:configHandlers = @()
-foreach ($handler in (Get-ChildItem $here/handlers/*.ps1)) {
-    . $handler.FullName
-}
-
