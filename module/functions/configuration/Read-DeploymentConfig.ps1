@@ -69,6 +69,7 @@ function Read-DeploymentConfig
     }
     else {
         # validate configuration
+        Write-Host "Processing configuration for environment '$EnvironmentConfigName'" -f Green
         $configOk = $true
         foreach ($requiredSetting in $deploymentConfig[$RequiredConfigurationKey]) {
             if ( !($deploymentConfig.ContainsKey($requiredSetting)) -or [string]::IsNullOrEmpty($deploymentConfig[$requiredSetting]) ) {

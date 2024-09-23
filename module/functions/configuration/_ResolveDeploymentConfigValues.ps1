@@ -29,7 +29,7 @@ function _ResolveDeploymentConfigValues {
             Write-Verbose "Checking resolver: '$($resolver.name)'"
             $handlerRes = [regex]::Matches($configValue, $resolver.matcher)
             if ($handlerRes.Count -gt 0) {
-                Write-Verbose "Matched resolver: '$($resolver.name)'"
+                Write-Host "Resolved configuration setting '$key' via '$($resolver.name)'"
                 $DeploymentConfig[$key] = _invokeHandler -HandlerName $resolver.handler `
                                                          -ValueToResolve $handlerRes[0].Groups['valueToResolve'].Value
                 break
