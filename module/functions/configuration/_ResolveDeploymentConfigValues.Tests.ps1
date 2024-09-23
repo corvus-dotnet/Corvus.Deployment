@@ -9,6 +9,12 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".Tests.ps1", ".p
 # Import other dependency functions
 . $here/../azure/_EnsureAzureConnection.ps1
 
+# Import the configuration handlers
+[array]$script:configHandlers = @()
+foreach ($handler in (Get-ChildItem $here/handlers/*.ps1)) {
+    . $handler.FullName
+}
+
 Describe "_ResolveDeploymentConfigValues Tests" {
 
     Context "No resolvable values" {
