@@ -29,7 +29,7 @@ function _ResolveDeploymentConfigValues {
             Write-Verbose "Checking resolver: '$($resolver.name)'"
             $handlerRes = [regex]::Matches($configValue, $resolver.matcher)
             if ($handlerRes.Count -gt 0) {
-                Write-Verbose "Matched resolver: '$($resolver.name)'"
+                Write-Host "Resolved configuration setting '$key' via '$($resolver.name)'"
                 $DeploymentConfig[$key] = _invokeHandler -HandlerName $resolver.handler `
                                                          -ValueToResolve $handlerRes[0].Groups['valueToResolve'].Value
                 break
@@ -52,11 +52,3 @@ function _invokeHandler {
 
     & $HandlerName $ValueToResolve
 }
-
-# Dynamically load the discovered configuration handlers
-$private:here = Split-Path -Parent $PSCommandPath
-$script:configHandlers = @()
-foreach ($handler in (Get-ChildItem $here/handlers/*.ps1)) {
-    . $handler.FullName
-}
-

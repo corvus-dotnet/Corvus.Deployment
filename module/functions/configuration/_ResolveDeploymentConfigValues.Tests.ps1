@@ -9,6 +9,12 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".Tests.ps1", ".p
 # Import other dependency functions
 . $here/../azure/_EnsureAzureConnection.ps1
 
+# Import the configuration handlers
+[array]$script:configHandlers = @()
+foreach ($handler in (Get-ChildItem $here/handlers/*.ps1)) {
+    . $handler.FullName
+}
+
 Describe "_ResolveDeploymentConfigValues Tests" {
 
     Context "No resolvable values" {
@@ -47,6 +53,34 @@ Describe "_ResolveDeploymentConfigValues Tests" {
 
         It "should update the configuration object with the resolved value" {
             $res.passwd | should -be "secret-password"
+        }
+    }
+
+    Context "Environment Variable Handler" {
+        It "should resolve the correct value" {
+            $mockConfig = @{
+                foo = "bar"
+                bar = $true
+                foobar = 2
+                passwd = "@EnvironmentVariable(TEST_ENV_VAR)" 
+            }
+            
+            $env:TEST_ENV_VAR = "value-from-env"
+
+            $res = _ResolveDeploymentConfigValues $mockConfig
+
+            $res.passwd | should -be "value-from-env"
+        }
+
+        It "should throw an exception if the environment variable does not exist" {
+            $mockConfig = @{
+                foo = "bar"
+                bar = $true
+                foobar = 2
+                passwd = "@EnvironmentVariable(NON_EXISTENT_ENV_VAR)" 
+            }
+
+            { _ResolveDeploymentConfigValues $mockConfig } | should -throw
         }
     }
 }
