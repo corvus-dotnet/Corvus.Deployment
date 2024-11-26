@@ -275,8 +275,8 @@ Describe "Assert-AzureServicePrincipalForRbac Tests" {
     Context "Key Vault Support" {
 
         $mockSavedSecret = @{
-            appId = "mockAppId"
-            password = "mockSecret"
+            clientId = "mockAppId"
+            clientSecret = "mockSecret"
             tenantId = "mockTenantId"
         }
         Mock Get-AzKeyVaultSecret { @{ SecretValue = ($mockSavedSecret | ConvertTo-Json | ConvertTo-SecureString -AsPlainText) } }
@@ -529,7 +529,7 @@ Describe "Assert-AzureServicePrincipalForRbac Tests" {
                 
             Describe "Existing secret storing the 'clientSecret' property without 'RotateSecret' option" {
                 $mockSavedSecret = @{
-                    appId = "mockAppId"
+                    clientId = "mockAppId"
                     clientSecret = "mockSecret"
                     tenantId = "mockTenantId"
                 }
@@ -573,7 +573,7 @@ Describe "Assert-AzureServicePrincipalForRbac Tests" {
             }
             Describe "Existing invalid secret in key vault without 'RotateSecret' option" {
                 $mockSavedSecret = @{
-                    appId = "mockAppId"
+                    clientId = "mockAppId"
                     tenantId = "mockTenantId"
                 }
                 Mock Get-AzKeyVaultSecret { @{ SecretValue = ($mockSavedSecret | ConvertTo-Json | ConvertTo-SecureString -AsPlainText) } }

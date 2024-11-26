@@ -109,7 +109,7 @@ function Assert-AzureServicePrincipalForRbac
                             $existingSp.id,
                             $existingSp.appId)
 
-        $existingSecret = $null
+        $kvSecretIsMissingOrInvalid = $false
         if ($useKeyVault) {
             # if using key vault, check whether the specified secret is available and contains the password
             $kvSecret = Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $KeyVaultSecretName
@@ -118,22 +118,22 @@ function Assert-AzureServicePrincipalForRbac
                                     ConvertFrom-SecureString -AsPlainText |
                                     ConvertFrom-Json -AsHashtable
 
-                # Handle that the password value may be stored under different keys, since
-                # the convention has changed over time
-                if ($existingSecretJson.ContainsKey("password")) {
-                    $existingSecret = $existingSecretJson.password
-                }
-                elseif ($existingSecretJson.ContainsKey("clientSecret")) {
-                    $existingSecret = $existingSecretJson.clientSecret
-                }
-                else {
-                    Write-Warning "Key vault secret does not contain a valid password field - will rotate the secret"
+                # Validate that the structure of the secret matches the requirements of 'azure/login@v2' GitHub Action
+                $requiredKeys = "clientId", "clientSecret", "tenantId"
+                $requiredKeys | ForEach-Object {
+                    if (!$existingSecretJson.ContainsKey($_)) {
+                        $kvSecretIsMissingOrInvalid = $true
+                        Write-Warning "Key vault secret does not contain a valid '$_' field - will rotate the secret"
+                    }
                 }  
+            }
+            else {
+                $kvSecretIsMissingOrInvalid = $true
             }
         }
 
         # rotate the client secret/credential 
-        if (($useKeyVault -and !$existingSecret) -or $RotateSecret) {
+        if (($useKeyVault -and $kvSecretIsMissingOrInvalid) -or $RotateSecret) {
             if ($PSCmdlet.ShouldProcess($Name, "Rotate Service Principal Secret")) {
                 Write-Host "Rotating service principal credential [UseKeyVault=$useKeyVault, KeyVaultSecretMissing=$(!$existingSecret), RotateFlag=$RotateSecret]"
                 if ($UseApplicationCredential) {
@@ -212,15 +212,14 @@ function Assert-AzureServicePrincipalForRbac
 
         # Store the credentials in key vault, if required
         if ($UseKeyVault) {
-            # This format of secret is compatible with 'azure/login' GitHub Action, whilst the 'password'
-            # property has been changed to 'clientSecret' in the later documentation, the original property
-            # name still works.  Also, the Azure CLI still produces the 'password' property in the output of its
-            # 'az ad sp create-for-rbac' command, so for now we will stick with this format.
+            # This format of secret is compatible with 'azure/login' GitHub Action, originally this used a format
+            # that matched the output 'az ad sp create-for-rbac' command, however this is no longer the case, so we
+            # use the format documented below.
             # REF: https://github.com/azure/login?tab=readme-ov-file#creds
             $appLoginDetails = @{
-                appId = ($applicationMode ? $Application.appId : $ServicePrincipal.appId)
-                password = $newCred.secretText
-                tenant = (Get-AzContext).Tenant.Id
+                clientId = ($applicationMode ? $Application.appId : $ServicePrincipal.appId)
+                clientSecret = $newCred.secretText
+                tenantId = (Get-AzContext).Tenant.Id
             }
             Write-Host "Storing client secret in key vault [VaultName=$KeyVaultName, SecretName=$KeyVaultSecretName]"
             Set-AzKeyVaultSecret -VaultName $KeyVaultName `
