@@ -135,7 +135,7 @@ function Assert-AzureServicePrincipalForRbac
         # rotate the client secret/credential 
         if (($useKeyVault -and $kvSecretIsMissingOrInvalid) -or $RotateSecret) {
             if ($PSCmdlet.ShouldProcess($Name, "Rotate Service Principal Secret")) {
-                Write-Host "Rotating service principal credential [UseKeyVault=$useKeyVault, KeyVaultSecretMissing=$(!$existingSecret), RotateFlag=$RotateSecret]"
+                Write-Host "Rotating service principal credential [UseKeyVault=$useKeyVault, KeyVaultSecretMissingOrInvalid=$($kvSecretIsMissingOrInvalid), RotateFlag=$RotateSecret]"
                 if ($UseApplicationCredential) {
                     $app = _getApplicationForNewAppCredential -DisplayName $Name
                     Write-Host "Credential will be added to app registration [AppId=$($app.appId)]"
