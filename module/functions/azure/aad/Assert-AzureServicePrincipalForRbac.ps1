@@ -212,6 +212,11 @@ function Assert-AzureServicePrincipalForRbac
 
         # Store the credentials in key vault, if required
         if ($UseKeyVault) {
+            # This format of secret is compatible with 'azure/login' GitHub Action, whilst the 'password'
+            # property has been changed to 'clientSecret' in the later documentation, the original property
+            # name still works.  Also, the Azure CLI still produces the 'password' property in the output of its
+            # 'az ad sp create-for-rbac' command, so for now we will stick with this format.
+            # REF: https://github.com/azure/login?tab=readme-ov-file#creds
             $appLoginDetails = @{
                 appId = ($applicationMode ? $Application.appId : $ServicePrincipal.appId)
                 password = $newCred.secretText
