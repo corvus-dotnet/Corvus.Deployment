@@ -114,10 +114,21 @@ function Assert-AzureServicePrincipalForRbac
             # if using key vault, check whether the specified secret is available and contains the password
             $kvSecret = Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $KeyVaultSecretName
             if ($kvSecret) {
-                $existingSecret = $kvSecret.SecretValue |
+                $existingSecretJson = $kvSecret.SecretValue |
                                     ConvertFrom-SecureString -AsPlainText |
-                                    ConvertFrom-Json |
-                                    Select-Object -ExpandProperty password    
+                                    ConvertFrom-Json -AsHashtable
+
+                # Handle that the password value may be stored under different keys, since
+                # the convention has changed over time
+                if ($existingSecretJson.ContainsKey("password")) {
+                    $existingSecret = $existingSecretJson.password
+                }
+                elseif ($existingSecretJson.ContainsKey("clientSecret")) {
+                    $existingSecret = $existingSecretJson.clientSecret
+                }
+                else {
+                    Write-Warning "Key vault secret does not contain a valid password field - will rotate the secret"
+                }  
             }
         }
 
@@ -211,6 +222,7 @@ function Assert-AzureServicePrincipalForRbac
                                  -Name $KeyVaultSecretName `
                                  -SecretValue ($appLoginDetails | ConvertTo-Json | ConvertTo-SecureString -AsPlainText -Force) `
                                  -ContentType "application/json" `
+                                 -Expires $body.passwordCredential.endDateTime `
                 | Out-Null
 
             return $null
