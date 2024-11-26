@@ -524,5 +524,101 @@ Describe "Assert-AzureServicePrincipalForRbac Tests" {
                 }
             }
         }
+
+        Context "Kay Vault secret validation" {
+                
+            Describe "Existing secret storing the 'clientSecret' property without 'RotateSecret' option" {
+                $mockSavedSecret = @{
+                    appId = "mockAppId"
+                    clientSecret = "mockSecret"
+                    tenantId = "mockTenantId"
+                }
+                Mock Get-AzKeyVaultSecret { @{ SecretValue = ($mockSavedSecret | ConvertTo-Json | ConvertTo-SecureString -AsPlainText) } }
+
+                Mock _getServicePrincipal { $mockSp }
+                Mock _getApplication { $mockApp }
+
+                Mock _newApplication {}
+                Mock _newServicePrincipal {}
+
+                $res = Assert-AzureServicePrincipalForRbac `
+                            -Name "mock-sp" `
+                            -CredentialDisplayName "mock-credential" `
+                            -KeyVaultName "mock-keyvault" `
+                            -KeyVaultSecretName "mock-secret-name"
+
+                It "should not create a new service principal" {
+                    Assert-MockCalled _newApplication -Times 0
+                    Assert-MockCalled _newServicePrincipal -Times 0
+                }
+
+                It "should check for an existing secret in the key vault" {
+                    Assert-MockCalled Get-AzKeyVaultSecret -Times 1     # the SP exists so we should check the key vault
+                }
+
+                It "should not create a new service principal credential" {
+                    $res.Count | Should -Be 2
+                    $res[0].id | Should -Be '00000000-0000-0000-0000-000000000001'
+                    $res[1] | Should -Be $null
+
+                    Assert-MockCalled _getServicePrincipal -Times 1
+                    Assert-MockCalled _getApplication -Times 0
+                    Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "servicePrincipals" }
+                    Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "applications" }
+                }
+
+                It "should not update the key vault secret" {
+                    Assert-MockCalled Set-AzKeyVaultSecret -Times 0     # the key vault should be updated with new secret
+                }
+            }
+            Describe "Existing invalid secret in key vault without 'RotateSecret' option" {
+                $mockSavedSecret = @{
+                    appId = "mockAppId"
+                    tenantId = "mockTenantId"
+                }
+                Mock Get-AzKeyVaultSecret { @{ SecretValue = ($mockSavedSecret | ConvertTo-Json | ConvertTo-SecureString -AsPlainText) } }
+                Mock Write-Warning {}
+                
+                Mock _getServicePrincipal { $mockSp }
+                Mock _getApplication { $mockApp }
+
+                Mock _newApplication {}
+                Mock _newServicePrincipal {}
+
+                $res = Assert-AzureServicePrincipalForRbac `
+                            -Name "mock-sp" `
+                            -CredentialDisplayName "mock-credential" `
+                            -KeyVaultName "mock-keyvault" `
+                            -KeyVaultSecretName "mock-secret-name"
+
+                It "should not create a new service principal" {
+                    Assert-MockCalled _newApplication -Times 0
+                    Assert-MockCalled _newServicePrincipal -Times 0
+                }
+
+                It "should check for an existing secret in the key vault" {
+                    Assert-MockCalled Get-AzKeyVaultSecret -Times 1     # the SP exists so we should check the key vault
+                }
+
+                It "should log a warning message" {
+                    Assert-MockCalled Write-Warning -Time 1
+                }
+
+                It "should create a new service principal credential" {
+                    $res.Count | Should -Be 2
+                    $res[0].id | Should -Be '00000000-0000-0000-0000-000000000001'
+                    $res[1] | Should -Be $null
+
+                    Assert-MockCalled _getServicePrincipal -Times 1
+                    Assert-MockCalled _getApplication -Times 0
+                    Assert-MockCalled Invoke-AzRestMethod -Times 1 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "servicePrincipals" }
+                    Assert-MockCalled Invoke-AzRestMethod -Times 0 -ParameterFilter { $Uri.EndsWith("addPassword") -and $Uri -match "applications" }
+                }
+
+                It "should update the key vault secret" {
+                    Assert-MockCalled Set-AzKeyVaultSecret -Times 1     # the key vault should be updated with new secret
+                }
+            }
+        }
     }
 }
