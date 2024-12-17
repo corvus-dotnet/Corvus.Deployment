@@ -17,6 +17,10 @@ The display name of the Azure AD service principal.
 .PARAMETER CredentialDisplayName
 The label applied to the created/updated credential, which is important for traceability purposes.
 
+.PARAMETER DefaultSubscriptionId
+The default subscriptionId to associate with the credential when storing in Key Vault.  This is
+required when the credential is to be used with the 'azure/login' GitHub Action.
+
 .PARAMETER KeyVaultName
 The key vault where that client secret will be stored.
 
@@ -65,6 +69,9 @@ function Assert-AzureServicePrincipalForRbac
                     Mandatory = $true)]
         [string] $KeyVaultSecretName,
 
+        [Parameter(ParameterSetName = 'KeyVault')]
+        [string] $DefaultSubscriptionId = "",
+
         [switch] $RotateSecret,
 
         [Parameter()]
@@ -109,29 +116,41 @@ function Assert-AzureServicePrincipalForRbac
                             $existingSp.id,
                             $existingSp.appId)
 
-        $existingSecret = $null
+        $kvSecretIsMissingOrInvalid = $false
         if ($useKeyVault) {
             # if using key vault, check whether the specified secret is available and contains the password
             $kvSecret = Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $KeyVaultSecretName
             if ($kvSecret) {
-                $existingSecret = $kvSecret.SecretValue |
+                $existingSecretJson = $kvSecret.SecretValue |
                                     ConvertFrom-SecureString -AsPlainText |
-                                    ConvertFrom-Json |
-                                    Select-Object -ExpandProperty password    
+                                    ConvertFrom-Json -AsHashtable
+
+                # Validate that the structure of the secret matches the requirements of 'azure/login@v2' GitHub Action
+                $requiredKeys = "clientId", "clientSecret", "tenantId"
+                $requiredKeys | ForEach-Object {
+                    if (!$existingSecretJson.ContainsKey($_)) {
+                        $kvSecretIsMissingOrInvalid = $true
+                        Write-Warning "Key vault secret does not contain a valid '$_' field - will rotate the secret"
+                    }
+                }  
+            }
+            else {
+                $kvSecretIsMissingOrInvalid = $true
             }
         }
 
         # rotate the client secret/credential 
-        if (($useKeyVault -and !$existingSecret) -or $RotateSecret) {
+        if (($useKeyVault -and $kvSecretIsMissingOrInvalid) -or $RotateSecret) {
             if ($PSCmdlet.ShouldProcess($Name, "Rotate Service Principal Secret")) {
-                Write-Host "Rotating service principal credential [UseKeyVault=$useKeyVault, KeyVaultSecretMissing=$(!$existingSecret), RotateFlag=$RotateSecret]"
+                Write-Host "Rotating service principal credential [UseKeyVault=$useKeyVault, KeyVaultSecretMissingOrInvalid=$($kvSecretIsMissingOrInvalid), RotateFlag=$RotateSecret]"
+                $handleCredSplat = @{ DefaultSubscriptionId = $DefaultSubscriptionId }
                 if ($UseApplicationCredential) {
                     $app = _getApplicationForNewAppCredential -DisplayName $Name
                     Write-Host "Credential will be added to app registration [AppId=$($app.appId)]"
-                    $handleCredSplat = @{ Application = $app }
+                    $handleCredSplat += @{ Application = $app }
                 }
                 else {
-                    $handleCredSplat = @{ ServicePrincipal = $existingSp }
+                    $handleCredSplat += @{ ServicePrincipal = $existingSp }
                     Write-Host "Credential will be added to service principal [Id=$($existingSp.id)]"
                 }
 
@@ -154,7 +173,10 @@ function Assert-AzureServicePrincipalForRbac
             [hashtable] $ServicePrincipal,
 
             [Parameter()]
-            [bool] $UseKeyVault
+            [bool] $UseKeyVault,
+
+            [Parameter()]
+            [string] $DefaultSubscriptionId
         )
 
         $applicationMode = $PSCmdlet.ParameterSetName -eq "Application"
@@ -201,16 +223,22 @@ function Assert-AzureServicePrincipalForRbac
 
         # Store the credentials in key vault, if required
         if ($UseKeyVault) {
+            # This format of secret is compatible with 'azure/login' GitHub Action, originally this used a format
+            # that matched the output 'az ad sp create-for-rbac' command, however this is no longer the case, so we
+            # use the format documented below.
+            # REF: https://github.com/azure/login?tab=readme-ov-file#creds
             $appLoginDetails = @{
-                appId = ($applicationMode ? $Application.appId : $ServicePrincipal.appId)
-                password = $newCred.secretText
-                tenant = (Get-AzContext).Tenant.Id
+                clientId = ($applicationMode ? $Application.appId : $ServicePrincipal.appId)
+                clientSecret = $newCred.secretText
+                subscriptionId = $DefaultSubscriptionId
+                tenantId = (Get-AzContext).Tenant.Id
             }
             Write-Host "Storing client secret in key vault [VaultName=$KeyVaultName, SecretName=$KeyVaultSecretName]"
             Set-AzKeyVaultSecret -VaultName $KeyVaultName `
                                  -Name $KeyVaultSecretName `
                                  -SecretValue ($appLoginDetails | ConvertTo-Json | ConvertTo-SecureString -AsPlainText -Force) `
                                  -ContentType "application/json" `
+                                 -Expires $body.passwordCredential.endDateTime `
                 | Out-Null
 
             return $null
