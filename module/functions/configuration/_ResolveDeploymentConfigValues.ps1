@@ -20,8 +20,10 @@ function _ResolveDeploymentConfigValues {
         [hashtable] $DeploymentConfig
     )
 
-    for ($i=0; $i -lt $DeploymentConfig.Keys.Count; $i++) {
-        $key = $DeploymentConfig.Keys | Select-Object -Skip $i -First 1
+    # Capture keys to an array to avoid enumeration issues when modifying the hashtable
+    $keys = @($DeploymentConfig.Keys)
+    
+    foreach ($key in $keys) {
         Write-Verbose "Checking resolvers for '$key'"
         $configValue = $DeploymentConfig[$key]
 
