@@ -1,0 +1,5 @@
+_codeCoverage/
+_packages/
+.zf/.cache
+.zf/extensions
+PesterTestResults.xml
