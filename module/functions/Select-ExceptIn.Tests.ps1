@@ -2,24 +2,30 @@
 # Copyright (c) Endjin Limited. All rights reserved.
 # </copyright>
 
-$here = Split-Path -Parent $PSCommandPath
-$sut = (Split-Path -Leaf $PSCommandPath) -replace ".Tests"
+BeforeAll {
+    $here = Split-Path -Parent $PSCommandPath
+    $sut = (Split-Path -Leaf $PSCommandPath) -replace ".Tests"
 
-. "$here\$sut"
+    . "$here/$sut"
+}
 
 Describe "Select-ExceptIn Tests" {
 
-    $singleReference = @(
-        @{ Name = "foo"; Location = "uk"; Id = "1000" }
-    )
-    $multiReference = @(
-        @{ Name = "foo"; Location = "uk"; Id = "1000" }
-        @{ Name = "bar"; Location = "uk"; Id = "1001" }
-    )
+    BeforeAll {
+        $singleReference = @(
+            @{ Name = "foo"; Location = "uk"; Id = "1000" }
+        )
+        $multiReference = @(
+            @{ Name = "foo"; Location = "uk"; Id = "1000" }
+            @{ Name = "bar"; Location = "uk"; Id = "1001" }
+        )
+    }
 
     Context "ValueFromPipeline" {
         Context "Empty input array" {
-            $res = @() | Select-ExceptIn @()
+            BeforeAll {
+                $res = @() | Select-ExceptIn @()
+            }
 
             It "should return no missing items" {
                 $res | Should -Be @()
@@ -27,7 +33,9 @@ Describe "Select-ExceptIn Tests" {
         }
 
         Context "Empty reference array (single input)" {
-            $res = $singleReference | Select-ExceptIn @()
+            BeforeAll {
+                $res = $singleReference | Select-ExceptIn @()
+            }
 
             It "should return a single item array" {
                 $res.Count | Should -Be 1
@@ -37,7 +45,9 @@ Describe "Select-ExceptIn Tests" {
         }
 
         Context "Empty reference array (multi input)" {
-            $res = $multiReference | Select-ExceptIn @()
+            BeforeAll {
+                $res = $multiReference | Select-ExceptIn @()
+            }
 
             It "should return all items" {
                 $res.Count | Should -Be 2
@@ -49,7 +59,9 @@ Describe "Select-ExceptIn Tests" {
         }
 
         Context "No missing entry" {
-            $res = $singleReference | Select-ExceptIn $multiReference
+            BeforeAll {
+                $res = $singleReference | Select-ExceptIn $multiReference
+            }
 
             It "should return no items" {
                 $res.Count | Should -Be 0
@@ -57,7 +69,9 @@ Describe "Select-ExceptIn Tests" {
         }
 
         Context "No missing entries" {
-            $res = $multiReference | Select-ExceptIn $multiReference
+            BeforeAll {
+                $res = $multiReference | Select-ExceptIn $multiReference
+            }
 
             It "should return no items" {
                 $res.Count | Should -Be 0
@@ -65,7 +79,9 @@ Describe "Select-ExceptIn Tests" {
         }
 
         Context "Missing entry" {
-            $res = $multiReference | Select-ExceptIn $singleReference
+            BeforeAll {
+                $res = $multiReference | Select-ExceptIn $singleReference
+            }
 
             It "should return the single missing item" {
                 $res.Count | Should -Be 1
@@ -75,7 +91,9 @@ Describe "Select-ExceptIn Tests" {
         }
 
         Context "Missing entries" {
-            $res = $multiReference | Select-ExceptIn @{ Name = "test"; Location = "uk"; Id = "1002" }
+            BeforeAll {
+                $res = $multiReference | Select-ExceptIn @{ Name = "test"; Location = "uk"; Id = "1002" }
+            }
 
             It "should return all the missing items" {
                 $res.Count | Should -Be 2
@@ -87,16 +105,18 @@ Describe "Select-ExceptIn Tests" {
         }
 
         Context "Mismatched key ordering" {
-            # Ensures that hashtables with keys in a different order should not affect the output
-            $input = @(
-                @{ Name = "foo"; Location = "uk"; Id = "1000" }   
-            )
+            BeforeAll {
+                # Ensures that hashtables with keys in a different order should not affect the output
+                $input = @(
+                    @{ Name = "foo"; Location = "uk"; Id = "1000" }
+                )
 
-            $reference = @(
-                @{ Name = "foo"; Id = "1000"; Location = "uk" }
-            )
+                $reference = @(
+                    @{ Name = "foo"; Id = "1000"; Location = "uk" }
+                )
 
-            $res = $input | Select-ExceptIn $reference
+                $res = $input | Select-ExceptIn $reference
+            }
 
             It "should still correctly identify the matching entries" {
                 $res.Count | Should -Be 0
@@ -104,16 +124,18 @@ Describe "Select-ExceptIn Tests" {
         }
 
         Context "Mismatched key names" {
-            # Ensures that hashtables with the same values but different keys is properly compared
-            $input = @(
-                @{ Name = "foo"; Location = "uk"; Id = "1000" }   
-            )
+            BeforeAll {
+                # Ensures that hashtables with the same values but different keys is properly compared
+                $input = @(
+                    @{ Name = "foo"; Location = "uk"; Id = "1000" }
+                )
 
-            $reference = @(
-                @{ Name = "foo"; Locale = "uk"; Identifier = "1000" }
-            )
+                $reference = @(
+                    @{ Name = "foo"; Locale = "uk"; Identifier = "1000" }
+                )
 
-            $res = $input | Select-ExceptIn $reference
+                $res = $input | Select-ExceptIn $reference
+            }
 
             It "should correctly identify the missing entry" {
                 $res.Count | Should -Be 1
@@ -123,7 +145,9 @@ Describe "Select-ExceptIn Tests" {
 
     Context "ValueFromParameter" {
         Context "Empty input array" {
-            $res = Select-ExceptIn -InputObject @() -ReferenceArray @()
+            BeforeAll {
+                $res = Select-ExceptIn -InputObject @() -ReferenceArray @()
+            }
 
             It "should return no missing items" {
                 $res | Should -Be @()
@@ -131,7 +155,9 @@ Describe "Select-ExceptIn Tests" {
         }
 
         Context "Empty reference array (single input)" {
-            $res = Select-ExceptIn -InputObject $singleReference -ReferenceArray @()
+            BeforeAll {
+                $res = Select-ExceptIn -InputObject $singleReference -ReferenceArray @()
+            }
 
             It "should return a single item array" {
                 $res.Count | Should -Be 1
@@ -141,7 +167,9 @@ Describe "Select-ExceptIn Tests" {
         }
 
         Context "Empty reference array (multi input)" {
-            $res = Select-ExceptIn -InputObject $multiReference -ReferenceArray @()
+            BeforeAll {
+                $res = Select-ExceptIn -InputObject $multiReference -ReferenceArray @()
+            }
 
             It "should return all items" {
                 $res.Count | Should -Be 2
@@ -153,7 +181,9 @@ Describe "Select-ExceptIn Tests" {
         }
 
         Context "No missing entry" {
-            $res = Select-ExceptIn -InputObject $singleReference -ReferenceArray $multiReference
+            BeforeAll {
+                $res = Select-ExceptIn -InputObject $singleReference -ReferenceArray $multiReference
+            }
 
             It "should return no items" {
                 $res.Count | Should -Be 0
@@ -161,7 +191,9 @@ Describe "Select-ExceptIn Tests" {
         }
 
         Context "No missing entries" {
-            $res = Select-ExceptIn -InputObject $multiReference -ReferenceArray $multiReference
+            BeforeAll {
+                $res = Select-ExceptIn -InputObject $multiReference -ReferenceArray $multiReference
+            }
 
             It "should return no items" {
                 $res.Count | Should -Be 0
@@ -169,7 +201,9 @@ Describe "Select-ExceptIn Tests" {
         }
 
         Context "Missing entry" {
-            $res = Select-ExceptIn -InputObject $multiReference -ReferenceArray $singleReference
+            BeforeAll {
+                $res = Select-ExceptIn -InputObject $multiReference -ReferenceArray $singleReference
+            }
 
             It "should return the single missing item" {
                 $res.Count | Should -Be 1
@@ -179,7 +213,9 @@ Describe "Select-ExceptIn Tests" {
         }
 
         Context "Missing entries" {
-            $res = Select-ExceptIn -InputObject $multiReference -ReferenceArray @{ Name = "test"; Location = "uk"; Id = "1002" }
+            BeforeAll {
+                $res = Select-ExceptIn -InputObject $multiReference -ReferenceArray @{ Name = "test"; Location = "uk"; Id = "1002" }
+            }
 
             It "should return all the missing items" {
                 $res.Count | Should -Be 2
@@ -191,16 +227,18 @@ Describe "Select-ExceptIn Tests" {
         }
 
         Context "Mismatched key ordering" {
-            # Ensures that hashtables with keys in a different order should not affect the output
-            $input = @(
-                @{ Name = "foo"; Location = "uk"; Id = "1000" }   
-            )
+            BeforeAll {
+                # Ensures that hashtables with keys in a different order should not affect the output
+                $input = @(
+                    @{ Name = "foo"; Location = "uk"; Id = "1000" }
+                )
 
-            $reference = @(
-                @{ Name = "foo"; Id = "1000"; Location = "uk" }
-            )
+                $reference = @(
+                    @{ Name = "foo"; Id = "1000"; Location = "uk" }
+                )
 
-            $res = Select-ExceptIn -InputObject $input -ReferenceArray $reference
+                $res = Select-ExceptIn -InputObject $input -ReferenceArray $reference
+            }
 
             It "should still correctly identify the matching entries" {
                 $res.Count | Should -Be 0
@@ -208,16 +246,18 @@ Describe "Select-ExceptIn Tests" {
         }
 
         Context "Mismatched key names" {
-            # Ensures that hashtables with the same values but different keys is properly compared
-            $input = @(
-                @{ Name = "foo"; Location = "uk"; Id = "1000" }   
-            )
+            BeforeAll {
+                # Ensures that hashtables with the same values but different keys is properly compared
+                $input = @(
+                    @{ Name = "foo"; Location = "uk"; Id = "1000" }
+                )
 
-            $reference = @(
-                @{ Name = "foo"; Locale = "uk"; Identifier = "1000" }
-            )
+                $reference = @(
+                    @{ Name = "foo"; Locale = "uk"; Identifier = "1000" }
+                )
 
-            $res = Select-ExceptIn -InputObject $input -ReferenceArray $reference
+                $res = Select-ExceptIn -InputObject $input -ReferenceArray $reference
+            }
 
             It "should correctly identify the missing entry" {
                 $res.Count | Should -Be 1

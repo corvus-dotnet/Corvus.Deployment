@@ -1,7 +1,7 @@
-FROM mcr.microsoft.com/powershell:7.2.2-debian-buster-slim
+FROM mcr.microsoft.com/powershell:lts-7.4-debian-bookworm
 
 # Install azure-cli
-ARG AZCLI_VER=2.33.1-1~buster
+ARG AZCLI_VER=2.80.0-1~bookworm
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y upgrade \
     && apt-get -y install --no-install-recommends ca-certificates curl apt-transport-https lsb-release gnupg wget \
@@ -11,21 +11,20 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && AZ_REPO=$(lsb_release -cs) \
     && echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $AZ_REPO main" | \
         tee /etc/apt/sources.list.d/azure-cli.list \
-    && wget https://packages.microsoft.com/config/debian/10/packages-microsoft-prod.deb -O packages-microsoft-prod.deb \
+    && wget https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb -O packages-microsoft-prod.deb \
     && dpkg -i packages-microsoft-prod.deb \
     && apt-get update && apt-get -y install --no-install-recommends \
         azure-cli=${AZCLI_VER} \
-        dotnet-sdk-3.1 \
-        dotnet-sdk-5.0 \
-        dotnet-sdk-6.0 \
+        dotnet-sdk-8.0 \
+        dotnet-sdk-10.0 \
     && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
 # Install PowerShell Az module
-ARG AZ_PWSH_VER=7.3.2
+ARG AZ_PWSH_VER=15.1.0
 RUN pwsh -noni -c "\$ProgressPreference='SilentlyContinue'; Install-Module Az -AllowClobber -RequiredVersion '${AZ_PWSH_VER}' -Repository PSGallery -Force -Scope AllUsers -Verbose"
 
 # Install Bicep so it is available via azure-cli and system path
-ARG AZ_BICEP_VER=v0.5.6
+ARG AZ_BICEP_VER=v0.40.2
 RUN az bicep install --version $AZ_BICEP_VER \
     && mv /root/.azure/bin/bicep /usr/local/bin/bicep \
     && chmod 755 /usr/local/bin/bicep \
