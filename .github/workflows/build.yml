@@ -39,8 +39,10 @@ jobs:
       with:
         environmentVariablesYaml: |
           ZF_GITHUB_SKIP_CREATE_RELEASE: false
+          ZF_BUILD_DOCKER_REGISTRY_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         secretsYaml: |
           ZF_BUILD_PS_REPOSITORY_APIKEY: ${{ secrets.PSGALLERY_APIKEY }}
+          ZF_BUILD_DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKERHUB_ACCESSTOKEN}}
         secretsEncryptionKey: ${{ secrets.SHARED_WORKFLOW_KEY }}
 
     - uses: endjin/Endjin.RecommendedPractices.GitHubActions/actions/run-build-process@main

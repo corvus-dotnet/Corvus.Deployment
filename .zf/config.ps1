@@ -63,15 +63,14 @@ $PSMarkdownDocsIncludeModulePage = $false
 $CreateGitHubRelease = $false   # only run for CI build by default
 
 $ContainerRegistryType = 'docker'
-$ContainerRegistryPublishPrefix = ''
 $ContainerImageVersionOverride = 'dev'  # used for local builds only to avoid tag proliferation in the local image store
 $ContainersToBuild = @(
-    # @{
-    #     Dockerfile = './Dockerfile'
-    #     ImageName = 'endjin/corvus.deployment'
-    #     ContextDir = '.'
-    #     Arguments = @{}
-    # }
+    @{
+        Dockerfile = './Dockerfile'
+        ImageName = 'endjin/corvus.deployment'
+        ContextDir = '.'
+        Arguments = @{}
+    }
 )
 
 task . FullBuild
