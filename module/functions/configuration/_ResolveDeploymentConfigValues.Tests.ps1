@@ -1,31 +1,35 @@
 # <copyright file="_ResolveDeploymentConfigValues.Tests.ps1" company="Endjin Limited">
 # Copyright (c) Endjin Limited. All rights reserved.
 # </copyright>
-$here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".Tests.ps1", ".ps1")
+BeforeAll {
+    $here = Split-Path -Parent $PSCommandPath
+    $sut = (Split-Path -Leaf $PSCommandPath).Replace(".Tests.ps1", ".ps1")
 
-. "$here\$sut"
+    . "$here/$sut"
 
-# Import other dependency functions
-. $here/../azure/_EnsureAzureConnection.ps1
+    # Import other dependency functions
+    . $here/../azure/_EnsureAzureConnection.ps1
 
-# Import the configuration handlers
-[array]$script:configHandlers = @()
-foreach ($handler in (Get-ChildItem $here/handlers/*.ps1)) {
-    . $handler.FullName
+    # Import the configuration handlers
+    [array]$script:configHandlers = @()
+    foreach ($handler in (Get-ChildItem $here/handlers/*.ps1)) {
+        . $handler.FullName
+    }
 }
 
 Describe "_ResolveDeploymentConfigValues Tests" {
 
     Context "No resolvable values" {
 
-        $mockConfig = @{
-            foo = "bar"
-            bar = $true
-            foobar = 2
-        }
+        BeforeAll {
+            $mockConfig = @{
+                foo = "bar"
+                bar = $true
+                foobar = 2
+            }
 
-        $res = _ResolveDeploymentConfigValues $mockConfig
+            $res = _ResolveDeploymentConfigValues $mockConfig
+        }
 
         It "should return unmodified configuration values" {
             $res | should -be $mockConfig
@@ -34,21 +38,23 @@ Describe "_ResolveDeploymentConfigValues Tests" {
 
     Context "Key Vault SecretUri Handler" {
 
-        $mockSecretUri = "https://myvault.vault.azure.net/secrets/mysecret"
-        $mockConfig = @{
-            foo = "bar"
-            bar = $true
-            foobar = 2
-            passwd = "@Microsoft.KeyVault(SecretUri=$mockSecretUri)" 
+        BeforeAll {
+            $mockSecretUri = "https://myvault.vault.azure.net/secrets/mysecret"
+            $mockConfig = @{
+                foo = "bar"
+                bar = $true
+                foobar = 2
+                passwd = "@Microsoft.KeyVault(SecretUri=$mockSecretUri)"
+            }
+
+            Mock _EnsureAzureConnection {}
+            Mock _invokeHandler { "secret-password" }
+
+            $res = _ResolveDeploymentConfigValues $mockConfig
         }
 
-        Mock _EnsureAzureConnection {}
-        Mock _invokeHandler { "secret-password" }
-        
-        $res = _ResolveDeploymentConfigValues $mockConfig
-
         It "should call the KeyVaultSecretUri handler" {
-            Assert-MockCalled _invokeHandler -Times 1 -ParameterFilter { $HandlerName -eq "_keyVaultSecretUriHandler" -and $ValueToResolve -eq $mockSecretUri }
+            Should -Invoke _invokeHandler -Times 1 -Scope Context -ParameterFilter { $HandlerName -eq "_keyVaultSecretUriHandler" -and $ValueToResolve -eq $mockSecretUri }
         }
 
         It "should update the configuration object with the resolved value" {
@@ -62,9 +68,9 @@ Describe "_ResolveDeploymentConfigValues Tests" {
                 foo = "bar"
                 bar = $true
                 foobar = 2
-                passwd = "@EnvironmentVariable(TEST_ENV_VAR)" 
+                passwd = "@EnvironmentVariable(TEST_ENV_VAR)"
             }
-            
+
             $env:TEST_ENV_VAR = "value-from-env"
 
             $res = _ResolveDeploymentConfigValues $mockConfig
@@ -77,7 +83,7 @@ Describe "_ResolveDeploymentConfigValues Tests" {
                 foo = "bar"
                 bar = $true
                 foobar = 2
-                passwd = "@EnvironmentVariable(NON_EXISTENT_ENV_VAR)" 
+                passwd = "@EnvironmentVariable(NON_EXISTENT_ENV_VAR)"
             }
 
             { _ResolveDeploymentConfigValues $mockConfig } | should -throw
@@ -105,14 +111,16 @@ Describe "_ResolveDeploymentConfigValues Integration Tests" -Tag Integration {
     }
 
     Context "Key Vault SecretUri Handler" {
-        Mock _EnsureAzureConnection {}
+        BeforeAll {
+            Mock _EnsureAzureConnection {}
 
-        $mockConfig = @{
-            username = "someuser"
-            password = "@Microsoft.KeyVault(SecretUri=$($kvSecret.Id))" 
+            $mockConfig = @{
+                username = "someuser"
+                password = "@Microsoft.KeyVault(SecretUri=$($kvSecret.Id))"
+            }
+
+            $res = _ResolveDeploymentConfigValues $mockConfig
         }
-        
-        $res = _ResolveDeploymentConfigValues $mockConfig
 
         It "should resolve the correct value from Key Vault" {
             (ConvertFrom-SecureString -AsplainText $mockConfig.password)  | should -be (ConvertFrom-SecureString -AsplainText $testSecretValue)

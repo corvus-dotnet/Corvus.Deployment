@@ -1,15 +1,19 @@
 # <copyright file="Merge-Hashtables.Tests.ps1" company="Endjin Limited">
 # Copyright (c) Endjin Limited. All rights reserved.
 # </copyright>
-$here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
-. "$here\$sut"
+BeforeAll {
+    $here = Split-Path -Parent $PSCommandPath
+    $sut = (Split-Path -Leaf $PSCommandPath) -replace '\.Tests\.', '.'
+    . "$here/$sut"
+}
 
 Describe 'Merge-Hashtable tests' {
 
-    $script:h1 = @{ Foo = 'bar' }
-    $script:h2 = @{ Bar = 'foo' }
-    $script:h3 = @{ FooBar = 'foobar'; Foo = 'notfoo' }
+    BeforeAll {
+        $script:h1 = @{ Foo = 'bar' }
+        $script:h2 = @{ Bar = 'foo' }
+        $script:h3 = @{ FooBar = 'foobar'; Foo = 'notfoo' }
+    }
 
     Context 'Merging 2 hashtables' {
 

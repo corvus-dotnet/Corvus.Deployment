@@ -43,10 +43,9 @@ $SkipPackage = $false
 $SkipPublish = $true
 
 # Set the required build options
-$PesterVersion = '4.10.1'
 $PesterTestsDir = Join-Path $here 'module'
 $PesterCodeCoveragePaths = Join-Path $PesterTestsDir 'functions'
-$PesterShowOptions = @("Describe","Failed","Summary")
+$PesterCodeCoverageThreshold = 30
 $PesterExcludeTagFilter = @('Integration')
 $PowerShellModulesToPublish = @(
     @{
